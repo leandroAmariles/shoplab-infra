@@ -38,7 +38,7 @@ report_docker() {
 # emulador se desecha de todos modos. Cualquier otro recurso pendiente sí hace fallar la prueba.
 only_vpc_left() {
   local remaining
-  remaining="$(terraform -chdir="$ENV_DIR" state list -lock=false 2>/dev/null || true)"
+  remaining="$(terraform -chdir="$ENV_DIR" state list 2>/dev/null || true)"
   [ "$remaining" = 'module.eks.aws_vpc.this[0]' ]
 }
 
@@ -53,7 +53,7 @@ cleanup() {
       log "AVISO: solo queda la VPC en el estado (limitación conocida de Floci en Linux); el resto se destruyó"
     else
       log "quedan recursos en el estado, además de la VPC:"
-      terraform -chdir="$ENV_DIR" state list -lock=false 2>&1 || true
+      terraform -chdir="$ENV_DIR" state list 2>&1 || true
       status=1
     fi
     # Con el emulador dañado terraform destroy no termina: se eliminan los contenedores y redes a la fuerza.
