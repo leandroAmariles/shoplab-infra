@@ -2,6 +2,8 @@
 # Borra todo: terraform destroy del entorno, destroy del bootstrap y limpieza de Floci. Se puede reintentar.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
+use_placeholder_secrets_if_missing # terraform destroy exige la variable aunque no use sus valores
+
 # Se destruye con el mismo modo con el que se levantó (lo recuerda up.sh); CLUSTER_MODE lo sobrescribe.
 if [ -z "${CLUSTER_MODE:-}" ] && [ -f "$ENV_DIR/.cluster-mode" ]; then
   CLUSTER_MODE="$(tr -d '\r\n' < "$ENV_DIR/.cluster-mode")"
@@ -14,7 +16,10 @@ if curl -fsS "$EMULATOR_URL/_localstack/health" >/dev/null 2>&1; then
     && curl -sI "$EMULATOR_URL/shoplab-tfstate-$ENV_NAME" | head -n 1 | grep -q ' 200'; then
     log "destruyendo el entorno $ENV_NAME (modo $CLUSTER_MODE)"
     bash "$ROOT/scripts/init-env.sh"
-    terraform -chdir="$ENV_DIR" destroy -input=false -auto-approve \
+    # DESTROY_TIMEOUT (segundos) acota el destroy: lo usa la prueba de humo para no colgarse si el emulador no responde.
+    destroy_timeout=()
+    [ -z "${DESTROY_TIMEOUT:-}" ] || destroy_timeout=(timeout -k 30 "$DESTROY_TIMEOUT")
+    "${destroy_timeout[@]}" terraform -chdir="$ENV_DIR" destroy -input=false -auto-approve \
       -var "environment=$ENV_NAME" -var "emulator_endpoint=$EMULATOR_URL" \
       -var "cluster_mode=$CLUSTER_MODE"
   fi

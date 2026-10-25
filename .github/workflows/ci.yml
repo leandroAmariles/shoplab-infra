@@ -1,0 +1,241 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# La lógica de cada control vive en scripts/*.sh (y se invoca con make): este archivo solo orquesta, de modo que
+# `make check` en local y los jobs de CI ejecutan lo mismo. Las versiones salen de versions.env.
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # paths-filter lists the PR files through the API, which needs pull-requests: read.
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      terraform: ${{ github.event_name != 'pull_request' || steps.filter.outputs.terraform == 'true' || steps.filter.outputs.ci == 'true' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v4
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          filters: |
+            terraform:
+              - 'terraform/**'
+              - 'scripts/**'
+              - 'docker-compose.yml'
+              - 'versions.env'
+              - '.tflint.hcl'
+              - '.trivyignore'
+              - 'Makefile'
+            ci:
+              - '.github/workflows/ci.yml'
+
+  static:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Load tool versions
+        run: grep -Ev '^[[:space:]]*(#|$)' versions.env >> "$GITHUB_ENV"
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - uses: terraform-linters/setup-tflint@v6
+        with:
+          tflint_version: v${{ env.TFLINT_VERSION }}
+      - uses: actions/cache@v6
+        with:
+          path: ~/.tflint.d/plugins
+          key: tflint-${{ runner.os }}-${{ hashFiles('.tflint.hcl') }}
+      - name: Check tool versions
+        run: bash scripts/check-tools.sh terraform tflint
+      - name: Format
+        run: make fmt-check
+      - name: Validate
+        run: make validate
+      - name: Lint
+        run: make lint
+      - name: Layout and version pins
+        run: make pins
+      - name: Terraform tests
+        run: make tf-test
+
+  trivy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read # upload-sarif reads the workflow run on private repositories
+      security-events: write
+    env:
+      # Fork and Dependabot PRs get a read-only token: skip the SARIF upload there.
+      CAN_WRITE: ${{ github.event.pull_request.head.repo.fork != true && github.actor != 'dependabot[bot]' }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Load tool versions
+        run: grep -Ev '^[[:space:]]*(#|$)' versions.env >> "$GITHUB_ENV"
+      # Report pass: never fails, so a tool/DB error here is distinguishable from the gate below.
+      - name: Trivy report
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v${{ env.TRIVY_VERSION }}
+          scan-type: config
+          scan-ref: terraform
+          severity: HIGH,CRITICAL
+          skip-dirs: '**/.terraform'
+          trivyignores: .trivyignore
+          format: sarif
+          output: trivy-results.sarif
+          limit-severities-for-sarif: true
+          exit-code: '0'
+      # Needs Code Scanning (public repository or GitHub Advanced Security). Where it is unavailable the upload only
+      # warns and the SARIF stays in the trivy-report artifact; the gate below still runs.
+      - name: Upload SARIF to code scanning
+        if: always() && env.CAN_WRITE == 'true'
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-config
+      - name: Upload Trivy report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: trivy-report
+          path: trivy-results.sarif
+          if-no-files-found: warn
+          retention-days: 14
+      # Gate pass: prints the findings in the log and fails on any HIGH/CRITICAL not in .trivyignore.
+      - name: Trivy gate
+        if: ${{ !cancelled() }}
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v${{ env.TRIVY_VERSION }}
+          scan-type: config
+          scan-ref: terraform
+          severity: HIGH,CRITICAL
+          skip-dirs: '**/.terraform'
+          trivyignores: .trivyignore
+          format: table
+          exit-code: '1'
+
+  plan:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      # Fork and Dependabot PRs get a read-only token: the plan goes to the job summary instead of a comment.
+      CAN_WRITE: ${{ github.event.pull_request.head.repo.fork != true && github.actor != 'dependabot[bot]' }}
+      PLAN_OUT: ${{ github.workspace }}/plan.txt
+    steps:
+      - uses: actions/checkout@v7
+      - name: Load tool versions
+        run: grep -Ev '^[[:space:]]*(#|$)' versions.env >> "$GITHUB_ENV"
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      # Floci starts from docker-compose.yml (same image as local, docker.sock mounted); plan.sh waits for it to be ready.
+      - name: Terraform plan against Floci
+        run: bash scripts/plan.sh
+      - name: Build comment
+        if: always() && hashFiles('plan.txt') != ''
+        run: bash scripts/tf-plan-comment.sh plan.txt "$RUN_URL" > comment.md
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      - name: Publish plan comment
+        if: always() && hashFiles('comment.md') != '' && github.event_name == 'pull_request' && env.CAN_WRITE == 'true'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- shoplab-infra-tf-plan -->';
+            const body = fs.readFileSync('comment.md', 'utf8');
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number, per_page: 100 });
+            const existing = comments.find((c) => c.body && c.body.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+      - name: Plan to job summary
+        if: always() && hashFiles('comment.md') != '' && !(github.event_name == 'pull_request' && env.CAN_WRITE == 'true')
+        run: cat comment.md >> "$GITHUB_STEP_SUMMARY"
+
+  smoke:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      # ecr-public.aws.com answers 429 to anonymous pulls from shared runner IPs (Argo CD's Redis image), so the pod
+      # sat in ImagePullBackOff. Same image and tag, pulled from Google's Docker Hub mirror instead.
+      TF_VAR_argocd_redis_image_repository: mirror.gcr.io/library/redis
+    steps:
+      - uses: actions/checkout@v7
+      - name: Load tool versions
+        run: grep -Ev '^[[:space:]]*(#|$)' versions.env >> "$GITHUB_ENV"
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      # k3s inside Docker evicts pods when the node has less than ~7.7 GB free; the stock runner image
+      # leaves too little, so drop toolchains this job does not use.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+      - name: Smoke test (apply, Argo CD Synced and Healthy, destroy)
+        # An explicit shell enables pipefail: without it `| tee` would hide a failing smoke.sh.
+        shell: bash
+        run: bash scripts/smoke.sh 2>&1 | tee smoke.log
+      - name: Cleanup
+        if: always()
+        run: |
+          bash scripts/down.sh || true
+          bash scripts/verify-clean.sh
+      - name: Upload smoke log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: smoke-log
+          path: smoke.log
+          if-no-files-found: warn
+          retention-days: 14
+
+  ci-gate:
+    if: always()
+    needs: [changes, static, trivy, plan, smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every job to pass or be skipped
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Job results: $RESULTS"
+          case " $RESULTS " in
+            *" failure "*|*" cancelled "*) echo "::error::A required job failed or was cancelled"; exit 1 ;;
+          esac

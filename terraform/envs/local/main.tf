@@ -39,9 +39,10 @@ module "secrets" {
 module "platform" {
   source = "../../modules/platform"
 
-  chart_versions   = var.chart_versions
-  region           = var.region
-  secrets_endpoint = local.cluster_secrets_endpoint
+  chart_versions                = var.chart_versions
+  region                        = var.region
+  secrets_endpoint              = local.cluster_secrets_endpoint
+  argocd_redis_image_repository = var.argocd_redis_image_repository
 
   depends_on = [module.eks]
 }

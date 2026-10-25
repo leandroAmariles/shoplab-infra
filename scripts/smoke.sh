@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# Prueba de humo: apply completo sobre Floci, espera a que todas las Application de Argo CD estén Synced y Healthy
+# y destruye. El destroy y la limpieza se ejecutan siempre (trap), incluso si algo falla o se cancela.
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
+command -v kubectl >/dev/null || die "kubectl no está instalado"
+
+# shellcheck disable=SC1091
+set -a; source "$ROOT/versions.env"; set +a
+KUBECONFIG_FILE="$ENV_DIR/kubeconfig.yaml"
+export DESTROY_TIMEOUT
+
+use_placeholder_secrets_if_missing
+
+kc() { kubectl --kubeconfig "$KUBECONFIG_FILE" "$@"; }
+
+report_failure() {
+  log "estado de las aplicaciones de Argo CD:"
+  kc get applications -A 2>&1 || true
+  log "eventos recientes:"
+  kc get events -A --sort-by=.lastTimestamp 2>&1 | tail -n 30 || true
+}
+
+# Estado de Docker y de Floci para diagnosticar un destroy que falla o se agota.
+report_docker() {
+  log "contenedores:"
+  docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Networks}}' 2>&1 || true
+  log "redes de Floci y contenedores conectados:"
+  docker network ls --format '{{.Name}}' | grep -E '^(floci-aws-|shoplab-infra_)' | while read -r net; do
+    docker network inspect "$net" --format '{{.Name}}: {{range .Containers}}{{.Name}} {{end}}' 2>&1 || true
+  done
+  log "últimas líneas del log de Floci:"
+  docker logs --tail 60 shoplab-floci 2>&1 || true
+}
+
+# En el Docker Engine de Linux del runner de CI, DeleteVpc de Floci no responde aunque todo lo demás ya esté destruido
+# (en local tarda 1 s). Si el destroy se agota y lo único que queda en el estado es la VPC, se avisa y se sigue: el
+# emulador se desecha de todos modos. Cualquier otro recurso pendiente sí hace fallar la prueba.
+only_vpc_left() {
+  local remaining
+  remaining="$(terraform -chdir="$ENV_DIR" state list 2>/dev/null || true)"
+  [ "$remaining" = 'module.eks.aws_vpc.this[0]' ]
+}
+
+cleanup() {
+  status=$?
+  [ "$status" -eq 0 ] || report_failure
+  log "destruyendo el entorno y limpiando (código previo: $status)"
+  if ! bash "$ROOT/scripts/down.sh"; then
+    log "down.sh falló o se agotó (DESTROY_TIMEOUT=${DESTROY_TIMEOUT}s); diagnóstico y limpieza forzada"
+    report_docker
+    if only_vpc_left; then
+      log "AVISO: solo queda la VPC en el estado (limitación conocida de Floci en Linux); el resto se destruyó"
+    else
+      log "quedan recursos en el estado, además de la VPC:"
+      terraform -chdir="$ENV_DIR" state list 2>&1 || true
+      status=1
+    fi
+    # Con el emulador dañado terraform destroy no termina: se eliminan los contenedores y redes a la fuerza.
+    docker compose -f "$ROOT/docker-compose.yml" down --remove-orphans >/dev/null 2>&1 || true
+    docker ps -aq --filter 'name=^floci-aws-' | xargs -r docker rm -f >/dev/null 2>&1 || true
+    docker network ls --format '{{.Name}}' | grep -E '^(floci-aws-|shoplab-infra_default$)' \
+      | xargs -r docker network rm >/dev/null 2>&1 || true
+    bash "$ROOT/scripts/verify-clean.sh" || status=1
+  fi
+  exit "$status"
+}
+trap cleanup EXIT
+
+# Una descarga de imagen fallida en el runner (ErrImagePull) deja el helm release en timeout; up.sh se puede reanudar,
+# así que se reintenta una vez antes de dar la prueba por fallida.
+bash "$ROOT/scripts/up.sh" || {
+  log "up.sh falló; se reintenta una vez"
+  report_failure
+  bash "$ROOT/scripts/up.sh"
+}
+
+log "esperando a Argo CD (Synced + Healthy), máximo ${ARGOCD_TIMEOUT}s"
+deadline=$((SECONDS + ARGOCD_TIMEOUT))
+while :; do
+  total="$(kc get applications -n argocd --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+  ready="$(kc get applications -n argocd \
+    -o jsonpath='{range .items[*]}{.status.sync.status}/{.status.health.status}{"\n"}{end}' 2>/dev/null \
+    | grep -c '^Synced/Healthy$' || true)"
+  if [ "$total" -gt 0 ] && [ "$ready" -eq "$total" ]; then
+    log "Argo CD listo: $ready/$total aplicaciones Synced y Healthy"
+    break
+  fi
+  if [ "$SECONDS" -ge "$deadline" ]; then
+    die "Argo CD no quedó Synced y Healthy en ${ARGOCD_TIMEOUT}s ($ready/$total aplicaciones listas)"
+  fi
+  sleep 10
+done

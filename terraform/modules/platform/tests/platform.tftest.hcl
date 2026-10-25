@@ -34,6 +34,29 @@ run "installs_four_platform_components_with_pinned_versions" {
   }
 }
 
+run "uses_the_given_redis_image_repository_for_argocd" {
+  command = plan
+
+  variables {
+    argocd_redis_image_repository = "mirror.gcr.io/library/redis"
+  }
+
+  assert {
+    condition     = one([for s in helm_release.argo_cd.set : s.value if s.name == "redis.image.repository"]) == "mirror.gcr.io/library/redis"
+    error_message = "Argo CD debe usar el repositorio de Redis recibido"
+  }
+}
+
+run "rejects_a_redis_image_repository_with_a_tag" {
+  command = plan
+
+  variables {
+    argocd_redis_image_repository = "mirror.gcr.io/library/redis:latest"
+  }
+
+  expect_failures = [var.argocd_redis_image_repository]
+}
+
 run "exposes_installed_components_and_argocd_url" {
   command = plan
 
