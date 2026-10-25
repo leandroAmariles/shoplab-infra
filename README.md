@@ -17,6 +17,7 @@ Cada pull request y cada push a `main` ejecutan `.github/workflows/ci.yml`. La l
 | Job | Qué hace | Equivalente local |
 | --- | --- | --- |
 | `static` | `terraform fmt -check`, `validate`, TFLint, estructura/pines y `terraform test` de cada módulo | `make fmt-check validate lint pins tf-test` |
+| `kustomize` | `kustomize build` de `kubernetes/overlays/{dev,staging,prod}`, `kubeconform -strict` y políticas de manifiestos (ver abajo) | `make kustomize policies test-policies` |
 | `trivy` | Trivy config sobre `terraform/`; falla con HIGH/CRITICAL no exceptuados y sube el SARIF a Security | `make trivy` |
 | `plan` | `terraform plan` contra un Floci efímero; lo publica como un único comentario del PR (se actualiza en cada push) | `make plan` (requiere Docker) |
 | `smoke` | `terraform apply` sobre Floci, espera a que todas las `Application` de Argo CD estén `Synced` y `Healthy`, y destruye | `make smoke` (requiere Docker) |
@@ -28,7 +29,7 @@ Checks requeridos del ruleset de `main` (`.github/rulesets/main-protection.json`
 
 ```bash
 make check-tools   # compara las herramientas instaladas con versions.env
-make check         # fmt-check, validate, lint, pins, tf-test y trivy
+make check         # fmt-check, validate, lint, pins, tf-test, kustomize, policies, test-policies y trivy
 ```
 
 Sin `make` (Git Bash en Windows): `bash scripts/check-tools.sh`, `bash scripts/test.sh [fmt|checks|modules|validate]`,
@@ -36,10 +37,27 @@ Sin `make` (Git Bash en Windows): `bash scripts/check-tools.sh`, `bash scripts/t
 
 ### Versiones de las herramientas
 
-`versions.env` es la única fuente de versiones (Terraform, TFLint y su plugin AWS, Trivy, imagen de Floci y tiempos
+`versions.env` es la única fuente de versiones (Terraform, TFLint y su plugin AWS, Trivy, kustomize, kubeconform, yq, imagen de Floci y tiempos
 límite). El workflow y `make` la leen; `scripts/check-tools.sh` falla si lo instalado difiere
 (`ALLOW_TOOL_DRIFT=1` lo convierte en aviso, solo para uso local). Si cambias la versión del plugin de TFLint o la
 imagen de Floci, actualiza también `.tflint.hcl` y `docker-compose.yml`: el script lo comprueba.
+
+### Overlays y políticas de manifiestos
+
+`kubernetes/base` define el namespace `shoplab` y una `Application` de Argo CD; cada overlay (`dev`, `staging`,
+`prod`) le fija nombre, ruta y namespace de destino. Son overlays mínimos: aún no despliegan cargas de trabajo. Al
+añadir un overlay hay que listarlo en `OVERLAYS` de `versions.env`. `scripts/policy-check.sh` revisa la salida
+renderizada y falla con una línea `regla | overlay | recurso | valor` por violación:
+
+| Regla | Falla si |
+| --- | --- |
+| `IMAGE_LATEST` | una imagen termina en `:latest` (también con digest) |
+| `IMAGE_NO_TAG` | una imagen no tiene tag ni digest (un puerto de registro no cuenta como tag) |
+| `TEMPLATE_REPO_URL` | aparece el placeholder `CAMBIA-ESTE-OWNER` |
+| `TARGET_REVISION_NOT_MAIN` | el `targetRevision` de una `Application`/`ApplicationSet` no es `main` (ausente = `<unset>`) |
+
+`kubeconform` valida con el catálogo comunitario de CRDs y rechaza los recursos sin esquema. Las herramientas se
+instalan en CI con `scripts/ci-install-tools.sh` (verifica el sha256 de cada descarga).
 
 ### Excepciones de Trivy
 

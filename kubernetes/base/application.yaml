@@ -1,0 +1,20 @@
+# Application de Argo CD que sincroniza el overlay del ambiente desde este repositorio. Cada overlay fija el nombre,
+# la ruta y el namespace de destino. Las políticas de CI exigen targetRevision: main y un repoURL sin el placeholder.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: shoplab
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/leandroAmariles/shoplab-infra
+    targetRevision: main
+    path: kubernetes/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: shoplab
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

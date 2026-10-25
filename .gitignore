@@ -30,3 +30,4 @@ terraform/modules/*/.terraform.lock.hcl
 # Artefactos del provider kind
 shoplab-*-config
 plan.txt
+.rendered/

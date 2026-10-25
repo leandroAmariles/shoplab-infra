@@ -4,7 +4,7 @@
 include versions.env
 
 .PHONY: up down bootstrap test test-integration scan \
-	check check-tools fmt-check validate lint pins tf-test trivy plan smoke
+	check check-tools fmt-check validate lint pins tf-test kustomize policies test-policies trivy plan smoke
 
 bootstrap:
 	@bash scripts/bootstrap.sh
@@ -26,7 +26,7 @@ scan:
 	@bash scripts/scan.sh
 
 # --- Controles del pipeline (job `static` y `trivy` de .github/workflows/ci.yml) ---
-check: check-tools fmt-check validate lint pins tf-test trivy
+check: check-tools fmt-check validate lint pins tf-test kustomize policies test-policies trivy
 
 check-tools:
 	@bash scripts/check-tools.sh
@@ -45,6 +45,15 @@ pins:
 
 tf-test:
 	@bash scripts/test.sh modules
+
+kustomize:
+	@bash scripts/kustomize-build.sh
+
+policies: kustomize
+	@bash scripts/policies.sh
+
+test-policies:
+	@bash scripts/tests/policy-check.test.sh
 
 trivy:
 	@bash scripts/trivy.sh
