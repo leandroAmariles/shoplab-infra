@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Políticas sobre manifiestos ya renderizados (salida de `kustomize build`). Reglas: contracts/policy-rules.md de LAB-99.
-#   IMAGE_LATEST | IMAGE_NO_TAG | TEMPLATE_REPO_URL | TARGET_REVISION_NOT_MAIN
+#   IMAGE_LATEST | IMAGE_NO_TAG | TEMPLATE_REPO_URL | TARGET_REVISION_NOT_MAIN | PLAIN_SECRET (LAB-80)
 # Uso: policy-check.sh <rendered.yaml> [<overlay>]. Salida: 0 sin violaciones, 1 con alguna, 2 por error de uso o de lectura.
 set -uo pipefail
 
@@ -46,6 +46,13 @@ while IFS=$'\t' read -r id revision; do
   [ -n "$id" ] || continue
   [ "$revision" = main ] || report TARGET_REVISION_NOT_MAIN "$id" "targetRevision=$revision"
 done <<< "$revisions"
+
+# Ningún recurso Secret en la salida: las credenciales se declaran como ExternalSecret y nunca viven en git.
+secrets="$(yq eval --no-doc "select(.kind == \"Secret\") | $ID" "$file")" \
+  || { echo "no se pudo leer $file" >&2; exit 2; }
+while IFS= read -r id; do
+  [ -n "$id" ] && report PLAIN_SECRET "$id" "kind Secret found (use ExternalSecret)"
+done <<< "$secrets"
 
 # El placeholder de la plantilla debe haberse reemplazado en todo el texto.
 while IFS= read -r line; do

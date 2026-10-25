@@ -19,23 +19,30 @@ CRD_SCHEMAS='https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Gro
 fail_msg() { log "$*"; [ "${GITHUB_ACTIONS:-}" != true ] || echo "::error::$*"; }
 
 fail=0
+# Por cada ambiente se construye el overlay de cargas de trabajo ($KUSTOMIZE_DIR/<overlay>) y su Application de
+# Argo CD ($ARGOCD_DIR/<overlay>); las políticas leen ambos desde RENDER_DIR.
+targets=()
 for overlay in ${OVERLAYS//,/ }; do
-  dir="$ROOT/$KUSTOMIZE_DIR/$overlay"
+  targets+=("$KUSTOMIZE_DIR/$overlay|$overlay" "$ARGOCD_DIR/$overlay|argocd-$overlay")
+done
+for target in "${targets[@]}"; do
+  rel="${target%%|*}"; name="${target##*|}"
+  dir="$ROOT/$rel"
   if [ ! -f "$dir/kustomization.yaml" ]; then
-    fail_msg "falta el overlay '$overlay' ($KUSTOMIZE_DIR/$overlay/kustomization.yaml)"
+    fail_msg "falta el overlay '$name' ($rel/kustomization.yaml)"
     fail=1; continue
   fi
-  out="$RENDER_DIR/$overlay.yaml"
+  out="$RENDER_DIR/$name.yaml"
   if ! kustomize build "$dir" > "$out"; then
-    fail_msg "kustomize build falló en el overlay '$overlay'"
+    fail_msg "kustomize build falló en '$rel'"
     fail=1; continue
   fi
   resources="$(grep -c '^kind:' "$out" || true)"
   if [ "$resources" -eq 0 ]; then
-    fail_msg "el overlay '$overlay' no rinde ningún recurso"
+    fail_msg "'$rel' no rinde ningún recurso"
     fail=1; continue
   fi
-  log "kubeconform: overlay $overlay ($resources recursos)"
+  log "kubeconform: $rel ($resources recursos)"
   kubeconform -strict -summary -schema-location default -schema-location "$CRD_SCHEMAS" "$out" || fail=1
 done
 exit "$fail"

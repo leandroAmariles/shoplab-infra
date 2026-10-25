@@ -17,8 +17,8 @@ Cada pull request y cada push a `main` ejecutan `.github/workflows/ci.yml`. La l
 | Job | Qué hace | Equivalente local |
 | --- | --- | --- |
 | `static` | `terraform fmt -check`, `validate`, TFLint, estructura/pines y `terraform test` de cada módulo | `make fmt-check validate lint pins tf-test` |
-| `kustomize` | `kustomize build` de `kubernetes/overlays/{dev,staging,prod}`, `kubeconform -strict` y políticas de manifiestos (ver abajo) | `make kustomize policies test-policies` |
-| `trivy` | Trivy config sobre `terraform/`; falla con HIGH/CRITICAL no exceptuados y sube el SARIF a Security | `make trivy` |
+| `kustomize` | `kustomize build` de `k8s/overlays/{dev,staging,prod}`, `kubeconform -strict` y políticas de manifiestos (ver abajo) | `make kustomize policies test-policies` |
+| `trivy` | Trivy config sobre `terraform/` (y, en `kustomize`, sobre los manifiestos renderizados); falla con HIGH/CRITICAL no exceptuados y sube el SARIF a Security | `make trivy` |
 | `plan` | `terraform plan` contra un Floci efímero; lo publica como un único comentario del PR (se actualiza en cada push) | `make plan` (requiere Docker) |
 | `smoke` | `terraform apply` sobre Floci, espera a que todas las `Application` de Argo CD estén `Synced` y `Healthy`, y destruye | `make smoke` (requiere Docker) |
 | `ci-gate` | Resume el resultado: falla si algún job falló o se canceló; los omitidos no bloquean | — |
@@ -44,10 +44,11 @@ imagen de Floci, actualiza también `.tflint.hcl` y `docker-compose.yml`: el scr
 
 ### Overlays y políticas de manifiestos
 
-`kubernetes/base` define el namespace `shoplab` y una `Application` de Argo CD; cada overlay (`dev`, `staging`,
-`prod`) le fija nombre, ruta y namespace de destino. Son overlays mínimos: aún no despliegan cargas de trabajo. Al
+`k8s/base` describe backend, frontend, ingest, Postgres con pgvector, Ollama e ingress; cada overlay de
+`k8s/overlays/` (`dev`, `staging`, `prod`) fija namespace, imágenes, recursos, HPA y configuración, y
+`k8s/argocd/<ambiente>` contiene la `Application` que lo sincroniza (ver [docs/kustomize.md](docs/kustomize.md)). Al
 añadir un overlay hay que listarlo en `OVERLAYS` de `versions.env`. `scripts/policy-check.sh` revisa la salida
-renderizada y falla con una línea `regla | overlay | recurso | valor` por violación:
+renderizada (overlays y Applications) y falla con una línea `regla | overlay | recurso | valor` por violación:
 
 | Regla | Falla si |
 | --- | --- |
@@ -55,6 +56,7 @@ renderizada y falla con una línea `regla | overlay | recurso | valor` por viola
 | `IMAGE_NO_TAG` | una imagen no tiene tag ni digest (un puerto de registro no cuenta como tag) |
 | `TEMPLATE_REPO_URL` | aparece el placeholder `CAMBIA-ESTE-OWNER` |
 | `TARGET_REVISION_NOT_MAIN` | el `targetRevision` de una `Application`/`ApplicationSet` no es `main` (ausente = `<unset>`) |
+| `PLAIN_SECRET` | aparece un recurso `kind: Secret`; las credenciales se declaran como `ExternalSecret` (LAB-80) |
 
 `kubeconform` valida con el catálogo comunitario de CRDs y rechaza los recursos sin esquema. Las herramientas se
 instalan en CI con `scripts/ci-install-tools.sh` (verifica el sha256 de cada descarga).

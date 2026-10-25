@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ollama
+  labels:
+    app.kubernetes.io/name: ollama
+spec:
+  serviceName: ollama
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ollama
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ollama
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ollama
+          image: ollama/ollama:0.40.8
+          command: [sh, /entrypoint.sh]
+          ports:
+            - name: http
+              containerPort: 11434
+          envFrom:
+            - configMapRef:
+                name: ollama-config
+          # Igual que el healthcheck de compose: listo cuando ambos modelos están descargados.
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - ollama list | grep -qF "$OLLAMA_CHAT_MODEL" && ollama list | grep -qF "$OLLAMA_EMBED_MODEL"
+            periodSeconds: 10
+            timeoutSeconds: 10
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+            failureThreshold: 90
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: models
+              mountPath: /root/.ollama
+            - name: tmp
+              mountPath: /tmp
+            - name: entrypoint
+              mountPath: /entrypoint.sh
+              subPath: entrypoint.sh
+              readOnly: true
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: entrypoint
+          configMap:
+            name: ollama-entrypoint
+  volumeClaimTemplates:
+    - metadata:
+        name: models
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 10Gi

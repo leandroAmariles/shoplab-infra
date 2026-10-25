@@ -1,0 +1,16 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: backend-credentials
+  namespace: shoplab-dev
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: aws-secrets-manager
+  target:
+    name: backend-credentials
+  data:
+    - secretKey: SPRING_DATASOURCE_PASSWORD
+      remoteRef:
+        key: /shoplab/dev/postgres-password

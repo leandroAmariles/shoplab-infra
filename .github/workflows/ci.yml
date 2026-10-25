@@ -34,7 +34,7 @@ jobs:
           filters: |
             terraform:
               - 'terraform/**'
-              - 'kubernetes/**'
+              - 'k8s/**'
               - 'scripts/**'
               - 'docker-compose.yml'
               - 'versions.env'
@@ -96,6 +96,17 @@ jobs:
         run: make policies
       - name: Policy tests
         run: make test-policies
+      # Misma compuerta que scripts/trivy.sh para los manifiestos ya renderizados (LAB-80).
+      - name: Trivy manifests gate
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v${{ env.TRIVY_VERSION }}
+          scan-type: config
+          scan-ref: .rendered
+          severity: HIGH,CRITICAL
+          trivyignores: .trivyignore
+          format: table
+          exit-code: '1'
 
   trivy:
     runs-on: ubuntu-latest

@@ -1,0 +1,14 @@
+# Base común de todos los ambientes (LAB-80). No se despliega sola: cada overlay le fija namespace, imágenes de la
+# aplicación, recursos, HPA y configuración. Kafka y los servicios de F4 se añaden aquí como un directorio más.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - postgres
+  - ollama
+  - backend
+  - frontend
+  - ingest
+  - ingress
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: shoplab
