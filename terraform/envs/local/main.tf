@@ -36,6 +36,15 @@ module "secrets" {
   parameters  = var.parameters
 }
 
+# Claves de Secrets Manager de los overlays de k8s/ (LAB-80): cada ambiente de la app lee /shoplab/<ambiente>/...
+module "app_secrets" {
+  source   = "../../modules/secrets"
+  for_each = toset(var.app_environments)
+
+  environment = each.key
+  secrets     = var.secrets
+}
+
 module "platform" {
   source = "../../modules/platform"
 

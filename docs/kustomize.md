@@ -55,9 +55,21 @@ usa la clave `/shoplab/ENVIRONMENT/postgres-password` y cada overlay sustituye `
 un ambiente solo lee sus propias claves. Los valores los crea el módulo `secrets` de Terraform:
 
 ```bash
-# Para sincronizar el overlay dev en el clúster local, crea las claves del ambiente dev.
-TF_VAR_environment=dev make up
+# Para sincronizar el overlay dev en el clúster local, crea además las claves /shoplab/dev/...
+TF_VAR_app_environments='["dev"]' make up
 ```
+
+## Desplegar un overlay en el clúster local
+
+`make up` deja Argo CD con la aplicación `guestbook`. Para desplegar el overlay `dev`:
+
+```bash
+kubectl --kubeconfig terraform/envs/local/kubeconfig.yaml apply -f k8s/argocd/dev/application.yaml
+```
+
+El k3s de Floci no trae `StorageClass`, así que los PVC de Postgres y Ollama quedan en `Pending` hasta que el clúster
+tenga una por defecto (en un EKS real se usa la del clúster). En local basta una clase sin provisionador con un PV
+`hostPath` por PVC (5Gi para `data-postgres-0` y 10Gi para `models-ollama-0` en `dev`).
 
 ## Construir y validar en local
 
