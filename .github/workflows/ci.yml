@@ -19,6 +19,10 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # paths-filter lists the PR files through the API, which needs pull-requests: read.
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       terraform: ${{ github.event_name != 'pull_request' || steps.filter.outputs.terraform == 'true' || steps.filter.outputs.ci == 'true' }}
     steps:
