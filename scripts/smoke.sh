@@ -33,33 +33,30 @@ report_docker() {
   docker logs --tail 60 shoplab-floci 2>&1 || true
 }
 
-# En un Docker Engine de Linux (runner de CI) Floci se adjunta a sí mismo a la red Docker de la VPC y luego no puede
-# borrarla en DeleteVpc: el destroy se queda esperando. Cuando k3s ya se detuvo, solo Floci mantiene la red ocupada,
-# así que se le desconecta para que DeleteVpc pueda terminar.
-unblock_vpc_networks() {
-  while sleep 10; do
-    if [ -z "$(docker ps -q --filter 'name=^floci-aws-eks-')" ]; then
-      docker network ls --format '{{.Name}}' | grep '^floci-aws-vpc-' | while read -r net; do
-        docker network disconnect "$net" shoplab-floci >/dev/null 2>&1 || true
-      done
-    fi
-  done
+# En el Docker Engine de Linux del runner de CI, DeleteVpc de Floci no responde aunque todo lo demás ya esté destruido
+# (en local tarda 1 s). Si el destroy se agota y lo único que queda en el estado es la VPC, se avisa y se sigue: el
+# emulador se desecha de todos modos. Cualquier otro recurso pendiente sí hace fallar la prueba.
+only_vpc_left() {
+  local remaining
+  remaining="$(terraform -chdir="$ENV_DIR" state list -lock=false 2>/dev/null || true)"
+  [ "$remaining" = 'module.eks.aws_vpc.this[0]' ]
 }
 
 cleanup() {
   status=$?
   [ "$status" -eq 0 ] || report_failure
   log "destruyendo el entorno y limpiando (código previo: $status)"
-  unblock_vpc_networks &
-  unblocker=$!
-  if bash "$ROOT/scripts/down.sh"; then
-    kill "$unblocker" 2>/dev/null || true
-  else
-    kill "$unblocker" 2>/dev/null || true
-    # Con el clúster dañado terraform destroy puede fallar: se eliminan los contenedores y redes a la fuerza.
+  if ! bash "$ROOT/scripts/down.sh"; then
     log "down.sh falló o se agotó (DESTROY_TIMEOUT=${DESTROY_TIMEOUT}s); diagnóstico y limpieza forzada"
     report_docker
-    status=1
+    if only_vpc_left; then
+      log "AVISO: solo queda la VPC en el estado (limitación conocida de Floci en Linux); el resto se destruyó"
+    else
+      log "quedan recursos en el estado, además de la VPC:"
+      terraform -chdir="$ENV_DIR" state list -lock=false 2>&1 || true
+      status=1
+    fi
+    # Con el emulador dañado terraform destroy no termina: se eliminan los contenedores y redes a la fuerza.
     docker compose -f "$ROOT/docker-compose.yml" down --remove-orphans >/dev/null 2>&1 || true
     docker ps -aq --filter 'name=^floci-aws-' | xargs -r docker rm -f >/dev/null 2>&1 || true
     docker network ls --format '{{.Name}}' | grep -E '^(floci-aws-|shoplab-infra_default$)' \
@@ -70,7 +67,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
-bash "$ROOT/scripts/up.sh"
+# Una descarga de imagen fallida en el runner (ErrImagePull) deja el helm release en timeout; up.sh se puede reanudar,
+# así que se reintenta una vez antes de dar la prueba por fallida.
+bash "$ROOT/scripts/up.sh" || {
+  log "up.sh falló; se reintenta una vez"
+  report_failure
+  bash "$ROOT/scripts/up.sh"
+}
 
 log "esperando a Argo CD (Synced + Healthy), máximo ${ARGOCD_TIMEOUT}s"
 deadline=$((SECONDS + ARGOCD_TIMEOUT))
