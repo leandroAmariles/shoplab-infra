@@ -29,7 +29,10 @@ bash "$ROOT/scripts/bootstrap.sh"
 bash "$ROOT/scripts/init-env.sh"
 
 log "aplicando el entorno $ENV_NAME"
-terraform -chdir="$ENV_DIR" apply -input=false -auto-approve \
+# APPLY_TIMEOUT (segundos) acota el apply: lo usa la prueba de humo para no colgarse si el emulador no levanta el clúster.
+apply_timeout=()
+[ -z "${APPLY_TIMEOUT:-}" ] || apply_timeout=(timeout -k 30 "$APPLY_TIMEOUT")
+"${apply_timeout[@]}" terraform -chdir="$ENV_DIR" apply -input=false -auto-approve \
   -var "environment=$ENV_NAME" -var "emulator_endpoint=$EMULATOR_URL" \
   -var "cluster_mode=$CLUSTER_MODE"
 
