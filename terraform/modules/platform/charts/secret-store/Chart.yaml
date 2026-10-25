@@ -1,0 +1,4 @@
+apiVersion: v2
+name: secret-store
+description: ClusterSecretStore de External Secrets hacia Secrets Manager (Floci)
+version: 0.1.0

@@ -1,0 +1,23 @@
+# Terraform (el .terraform.lock.hcl SÍ se versiona)
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+
+# Secretos y credenciales locales: nunca en git
+secrets.auto.tfvars
+*.auto.tfvars
+!*.auto.tfvars.example
+kubeconfig*
+*.pem
+*.key
+.env*
+
+# Varios
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/

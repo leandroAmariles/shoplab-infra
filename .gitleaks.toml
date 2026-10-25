@@ -1,0 +1,9 @@
+title = "shoplab-infra"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Credenciales ficticias del emulador y marcadores de ejemplo"
+regexes = ['''CHANGE_ME''']
+paths = ['''.*\.example$''']
