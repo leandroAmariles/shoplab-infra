@@ -1,0 +1,31 @@
+# Terraform (el .terraform.lock.hcl SÍ se versiona)
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+
+# Secretos y credenciales locales: nunca en git
+secrets.auto.tfvars
+*.auto.tfvars
+!*.auto.tfvars.example
+kubeconfig*
+*.pem
+*.key
+.env*
+
+# Varios
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/
+
+# Modo de cluster recordado por up.sh
+.cluster-mode
+
+# Locks de módulos (los genera terraform test; solo se versionan los de las raíces)
+terraform/modules/*/.terraform.lock.hcl
+# Artefactos del provider kind
+shoplab-*-config

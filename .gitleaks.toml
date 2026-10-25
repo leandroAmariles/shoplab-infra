@@ -1,0 +1,9 @@
+title = "shoplab-infra"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Credenciales ficticias del emulador y valores de prueba obvios (nunca valores reales)"
+regexes = ['''CHANGE_ME''', '''valor-de-prueba-[0-9]+''', '''valor-local-de-prueba-[0-9]+''']
+paths = ['''.*\.example$''']

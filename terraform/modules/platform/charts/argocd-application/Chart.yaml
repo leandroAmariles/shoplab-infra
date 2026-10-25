@@ -1,0 +1,4 @@
+apiVersion: v2
+name: argocd-application
+description: Application inicial que Argo CD sincroniza
+version: 0.1.0

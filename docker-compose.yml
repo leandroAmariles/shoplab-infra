@@ -1,0 +1,15 @@
+# Emulador de AWS local (Floci, licencia MIT). Imagen fijada: nunca :latest.
+# El nombre del proyecto fija el de la red (shoplab-infra_default), que usa scripts/floci-ip.sh.
+name: shoplab-infra
+
+services:
+  floci:
+    image: floci/floci:2.3.0
+    container_name: shoplab-floci
+    ports:
+      - "4566:4566"
+    environment:
+      FLOCI_HOSTNAME: localhost
+      FLOCI_SERVICES_EKS_DEFAULT_IMAGE: rancher/k3s:v1.35.9-k3s1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
