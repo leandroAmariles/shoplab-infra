@@ -8,7 +8,7 @@ command -v kubectl >/dev/null || die "kubectl no está instalado"
 # shellcheck disable=SC1091
 set -a; source "$ROOT/versions.env"; set +a
 KUBECONFIG_FILE="$ENV_DIR/kubeconfig.yaml"
-export DESTROY_TIMEOUT
+export APPLY_TIMEOUT DESTROY_TIMEOUT
 
 use_placeholder_secrets_if_missing
 
@@ -42,6 +42,16 @@ only_vpc_left() {
   [ "$remaining" = 'module.eks.aws_vpc.this[0]' ]
 }
 
+# Con el emulador dañado terraform destroy no termina: se eliminan los contenedores y redes a la fuerza.
+force_cleanup() {
+  docker compose -f "$ROOT/docker-compose.yml" down --remove-orphans >/dev/null 2>&1 || true
+  docker ps -aq --filter 'name=^floci-aws-' | xargs -r docker rm -f >/dev/null 2>&1 || true
+  docker network ls --format '{{.Name}}' | grep -E '^(floci-aws-|shoplab-infra_default$)' \
+    | xargs -r docker network rm >/dev/null 2>&1 || true
+  rm -rf "$ENV_DIR/bootstrap/$BOOT_STATE" "$ENV_DIR/bootstrap/$BOOT_STATE.backup" "$ENV_DIR/.terraform" \
+    "$ENV_DIR/.cluster-mode"
+}
+
 cleanup() {
   status=$?
   [ "$status" -eq 0 ] || report_failure
@@ -56,22 +66,23 @@ cleanup() {
       terraform -chdir="$ENV_DIR" state list 2>&1 || true
       status=1
     fi
-    # Con el emulador dañado terraform destroy no termina: se eliminan los contenedores y redes a la fuerza.
-    docker compose -f "$ROOT/docker-compose.yml" down --remove-orphans >/dev/null 2>&1 || true
-    docker ps -aq --filter 'name=^floci-aws-' | xargs -r docker rm -f >/dev/null 2>&1 || true
-    docker network ls --format '{{.Name}}' | grep -E '^(floci-aws-|shoplab-infra_default$)' \
-      | xargs -r docker network rm >/dev/null 2>&1 || true
+    force_cleanup
     bash "$ROOT/scripts/verify-clean.sh" || status=1
   fi
   exit "$status"
 }
 trap cleanup EXIT
 
-# Una descarga de imagen fallida en el runner (ErrImagePull) deja el helm release en timeout; up.sh se puede reanudar,
-# así que se reintenta una vez antes de dar la prueba por fallida.
+# Una descarga de imagen fallida (ErrImagePull) o un clúster k3s que no arranca dejan el apply en error o colgado; el
+# apply está acotado por APPLY_TIMEOUT. Se reintenta una vez desde cero (el estado vive en el Floci descartado).
 bash "$ROOT/scripts/up.sh" || {
-  log "up.sh falló; se reintenta una vez"
+  log "up.sh falló o se agotó (APPLY_TIMEOUT=${APPLY_TIMEOUT}s); diagnóstico y reintento desde cero"
   report_failure
+  report_docker
+  docker ps -a --filter 'name=^floci-aws-' --format '{{.Names}}' | while read -r c; do
+    log "log de $c:"; docker logs --tail 40 "$c" 2>&1 || true
+  done
+  force_cleanup
   bash "$ROOT/scripts/up.sh"
 }
 
