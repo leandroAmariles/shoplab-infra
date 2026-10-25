@@ -1,0 +1,23 @@
+# Excepciones del escaneo de Trivy (LAB-99). Un id por línea: id de misconfig (p. ej. AVD-AWS-0057) o CVE/GHSA.
+#
+# Cada excepción DEBE ir precedida de comentarios con el motivo y el responsable:
+#
+#   # Motivo: emulador local, el recurso no existe en AWS real
+#   # Responsable: @equipo-infra | Revisar antes de: 2027-01-31
+#   AVD-AWS-0000
+#
+# No se aceptan excepciones sin justificación. Retira la entrada cuando el hallazgo se corrija.
+
+# --- Excepciones iniciales (LAB-99): hallazgos del código de LAB-98 ---
+# Motivo: el clúster EKS y el bucket de estado existen solo dentro de Floci (emulador local); no hay AWS real, ni
+# datos reales, ni red pública. Endurecer (cifrado con KMS, acceso privado, bloqueo de acceso público) queda para
+# cuando estos módulos se usen contra una cuenta real.
+# Responsable: @leandroAmariles | Revisar antes de: 2027-01-31
+AWS-0039
+AWS-0040
+AWS-0041
+AWS-0086
+AWS-0087
+AWS-0091
+AWS-0093
+AWS-0132
