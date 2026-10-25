@@ -33,11 +33,29 @@ report_docker() {
   docker logs --tail 60 shoplab-floci 2>&1 || true
 }
 
+# En un Docker Engine de Linux (runner de CI) Floci se adjunta a sí mismo a la red Docker de la VPC y luego no puede
+# borrarla en DeleteVpc: el destroy se queda esperando. Cuando k3s ya se detuvo, solo Floci mantiene la red ocupada,
+# así que se le desconecta para que DeleteVpc pueda terminar.
+unblock_vpc_networks() {
+  while sleep 10; do
+    if [ -z "$(docker ps -q --filter 'name=^floci-aws-eks-')" ]; then
+      docker network ls --format '{{.Name}}' | grep '^floci-aws-vpc-' | while read -r net; do
+        docker network disconnect "$net" shoplab-floci >/dev/null 2>&1 || true
+      done
+    fi
+  done
+}
+
 cleanup() {
   status=$?
   [ "$status" -eq 0 ] || report_failure
   log "destruyendo el entorno y limpiando (código previo: $status)"
-  if ! bash "$ROOT/scripts/down.sh"; then
+  unblock_vpc_networks &
+  unblocker=$!
+  if bash "$ROOT/scripts/down.sh"; then
+    kill "$unblocker" 2>/dev/null || true
+  else
+    kill "$unblocker" 2>/dev/null || true
     # Con el clúster dañado terraform destroy puede fallar: se eliminan los contenedores y redes a la fuerza.
     log "down.sh falló o se agotó (DESTROY_TIMEOUT=${DESTROY_TIMEOUT}s); diagnóstico y limpieza forzada"
     report_docker
