@@ -11,7 +11,7 @@ labels:
 images:
   # Tag de versión liberada (inmutable en GHCR); nunca latest.
   - name: ghcr.io/leandroamariles/backend
-    newTag: v0.1.1
+    newTag: latest
   - name: ghcr.io/leandroamariles/frontend
     newTag: v0.1.1
   - name: ghcr.io/leandroamariles/ingest

@@ -5,6 +5,7 @@ resources:
   - ../../base
   - namespace.yaml
   - hpa.yaml
+  - secret.yaml
 labels:
   - pairs:
       app.kubernetes.io/environment: staging

@@ -1,5 +1,5 @@
 # Application de Argo CD que sincroniza el overlay dev desde este repositorio. El namespace de destino lo crea el
-# propio overlay (namespace.yaml). Las politicas de CI exigen targetRevision: main y un repoURL sin el placeholder.
+# propio overlay (namespace.yaml). Las politicas de CI exigen targetRevision: develop y un repoURL sin el placeholder.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -9,7 +9,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/leandroAmariles/shoplab-infra
-    targetRevision: main
+    targetRevision: develop
     path: k8s/overlays/dev
   destination:
     server: https://kubernetes.default.svc
