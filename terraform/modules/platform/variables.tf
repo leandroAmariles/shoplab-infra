@@ -27,6 +27,17 @@ variable "region" {
   default     = "us-east-1"
 }
 
+variable "argocd_redis_image_repository" {
+  description = "Repositorio de la imagen de Redis de Argo CD; el tag lo fija el chart. Permite usar un espejo cuando ecr-public.aws.com limita las descargas anónimas (429)"
+  type        = string
+  default     = "ecr-public.aws.com/docker/library/redis"
+
+  validation {
+    condition     = !endswith(var.argocd_redis_image_repository, ":latest") && !strcontains(var.argocd_redis_image_repository, ":")
+    error_message = "Indica solo el repositorio, sin tag: el tag lo fija el chart (sin latest)"
+  }
+}
+
 variable "argocd_initial_app" {
   description = "Application inicial que Argo CD sincroniza (repositorio público)"
   type = object({

@@ -6,6 +6,13 @@ resource "helm_release" "argo_cd" {
   chart            = "argo-cd"
   version          = var.chart_versions.argo_cd
 
+  # Redis usa un repositorio configurable (por defecto el del chart): ecr-public.aws.com responde 429 a descargas
+  # anónimas desde los runners de CI. El tag lo sigue fijando el chart.
+  set = [{
+    name  = "redis.image.repository"
+    value = var.argocd_redis_image_repository
+  }]
+
   wait    = true
   timeout = 600
 

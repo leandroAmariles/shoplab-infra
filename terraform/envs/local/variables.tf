@@ -44,6 +44,12 @@ variable "chart_versions" {
   }
 }
 
+variable "argocd_redis_image_repository" {
+  description = "Repositorio de la imagen de Redis de Argo CD (espejo si ecr-public.aws.com responde 429); sin tag"
+  type        = string
+  default     = "ecr-public.aws.com/docker/library/redis"
+}
+
 variable "secrets" {
   description = "Nombre => valor de los secretos de la app; se proporciona fuera de git (secrets.auto.tfvars o TF_VAR_secrets)"
   type        = map(string)

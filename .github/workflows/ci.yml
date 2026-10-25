@@ -189,6 +189,10 @@ jobs:
     if: needs.changes.outputs.terraform == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    env:
+      # ecr-public.aws.com answers 429 to anonymous pulls from shared runner IPs (Argo CD's Redis image), so the pod
+      # sat in ImagePullBackOff. Same image and tag, pulled from Google's Docker Hub mirror instead.
+      TF_VAR_argocd_redis_image_repository: mirror.gcr.io/library/redis
     steps:
       - uses: actions/checkout@v7
       - name: Load tool versions
