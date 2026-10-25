@@ -34,6 +34,7 @@ jobs:
           filters: |
             terraform:
               - 'terraform/**'
+              - 'kubernetes/**'
               - 'scripts/**'
               - 'docker-compose.yml'
               - 'versions.env'
@@ -75,6 +76,26 @@ jobs:
         run: make pins
       - name: Terraform tests
         run: make tf-test
+
+  kustomize:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Load tool versions
+        run: grep -Ev '^[[:space:]]*(#|$)' versions.env >> "$GITHUB_ENV"
+      - name: Install kustomize, kubeconform and yq
+        run: bash scripts/ci-install-tools.sh
+      - name: Check tool versions
+        run: bash scripts/check-tools.sh kustomize kubeconform yq
+      - name: Build and validate overlays
+        run: make kustomize
+      - name: Manifest policies
+        run: make policies
+      - name: Policy tests
+        run: make test-policies
 
   trivy:
     runs-on: ubuntu-latest
@@ -227,7 +248,7 @@ jobs:
 
   ci-gate:
     if: always()
-    needs: [changes, static, trivy, plan, smoke]
+    needs: [changes, static, kustomize, trivy, plan, smoke]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

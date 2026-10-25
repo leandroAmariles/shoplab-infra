@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: shoplab
+spec:
+  selector:
+    matchLabels: {app: api}
+  template:
+    metadata:
+      labels: {app: api}
+    spec:
+      initContainers:
+        - name: init
+          image: ghcr.io/example/init:1.0.0
+      containers:
+        - name: api
+          image: ghcr.io/example/api:1.2.3
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: shoplab
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/CAMBIA-ESTE-OWNER/shoplab-infra
+    targetRevision: main
+    path: kubernetes/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: shoplab
