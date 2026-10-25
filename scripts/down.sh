@@ -2,6 +2,8 @@
 # Borra todo: terraform destroy del entorno, destroy del bootstrap y limpieza de Floci. Se puede reintentar.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
+use_placeholder_secrets_if_missing # terraform destroy exige la variable aunque no use sus valores
+
 # Se destruye con el mismo modo con el que se levantó (lo recuerda up.sh); CLUSTER_MODE lo sobrescribe.
 if [ -z "${CLUSTER_MODE:-}" ] && [ -f "$ENV_DIR/.cluster-mode" ]; then
   CLUSTER_MODE="$(tr -d '\r\n' < "$ENV_DIR/.cluster-mode")"

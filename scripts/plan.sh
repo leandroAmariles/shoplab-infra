@@ -12,10 +12,7 @@ export EMULATOR_URL
 PLAN_OUT="${PLAN_OUT:-$ROOT/plan.txt}"
 CLUSTER_MODE="${CLUSTER_MODE:-floci}"
 
-# Solo se planifica: si no hay valores de secretos, valen marcadores obvios.
-if [ ! -f "$ENV_DIR/secrets.auto.tfvars" ] && [ -z "${TF_VAR_secrets:-}" ]; then
-  export TF_VAR_secrets='{"postgres-password"="CHANGE_ME","llm-api-key"="CHANGE_ME"}'
-fi
+use_placeholder_secrets_if_missing
 
 if ! docker ps --format '{{.Names}}' | grep -qx shoplab-floci && curl -fsS "$EMULATOR_URL/_localstack/health" >/dev/null 2>&1; then
   die "El puerto 4566 ya lo usa otro emulador; deténlo o cambia EMULATOR_URL"

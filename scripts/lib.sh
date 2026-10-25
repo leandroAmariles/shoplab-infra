@@ -17,6 +17,13 @@ export MSYS_NO_PATHCONV=1
 log() { printf '[shoplab-infra] %s\n' "$*" >&2; }
 die() { log "ERROR: $*"; exit 1; }
 
+# Solo se planifica, se valida el despliegue o se destruye: si no hay valores de secretos, valen marcadores obvios.
+use_placeholder_secrets_if_missing() {
+  if [ ! -f "$ENV_DIR/secrets.auto.tfvars" ] && [ -z "${TF_VAR_secrets:-}" ]; then
+    export TF_VAR_secrets='{"postgres-password"="CHANGE_ME","llm-api-key"="CHANGE_ME"}'
+  fi
+}
+
 # Espera a que Floci responda; falla con un mensaje claro si no lo hace.
 wait_for_emulator() {
   local tries=60

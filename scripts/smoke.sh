@@ -9,10 +9,7 @@ command -v kubectl >/dev/null || die "kubectl no está instalado"
 set -a; source "$ROOT/versions.env"; set +a
 KUBECONFIG_FILE="$ENV_DIR/kubeconfig.yaml"
 
-# Solo se valida el despliegue: si no hay valores de secretos, valen marcadores obvios.
-if [ ! -f "$ENV_DIR/secrets.auto.tfvars" ] && [ -z "${TF_VAR_secrets:-}" ]; then
-  export TF_VAR_secrets='{"postgres-password"="CHANGE_ME","llm-api-key"="CHANGE_ME"}'
-fi
+use_placeholder_secrets_if_missing
 
 kc() { kubectl --kubeconfig "$KUBECONFIG_FILE" "$@"; }
 
@@ -27,7 +24,14 @@ cleanup() {
   status=$?
   [ "$status" -eq 0 ] || report_failure
   log "destruyendo el entorno y limpiando (código previo: $status)"
-  bash "$ROOT/scripts/down.sh" || { log "down.sh falló; se fuerza la limpieza"; bash "$ROOT/scripts/verify-clean.sh" || status=1; }
+  if ! bash "$ROOT/scripts/down.sh"; then
+    # Con el clúster dañado terraform destroy puede fallar: se eliminan los contenedores y redes a la fuerza.
+    log "down.sh falló; se fuerza la limpieza"
+    docker compose -f "$ROOT/docker-compose.yml" down --remove-orphans >/dev/null 2>&1 || true
+    docker ps -aq --filter 'name=^floci-aws-' | xargs -r docker rm -f >/dev/null 2>&1 || true
+    docker network ls --format '{{.Name}}' | grep -E '^(floci-aws-|shoplab-infra_default$)'       | xargs -r docker network rm >/dev/null 2>&1 || true
+    bash "$ROOT/scripts/verify-clean.sh" || status=1
+  fi
   exit "$status"
 }
 trap cleanup EXIT

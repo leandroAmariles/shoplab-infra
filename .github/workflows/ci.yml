@@ -81,6 +81,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      actions: read # upload-sarif reads the workflow run on private repositories
       security-events: write
     env:
       # Fork and Dependabot PRs get a read-only token: skip the SARIF upload there.
@@ -192,7 +193,15 @@ jobs:
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
+      # k3s inside Docker evicts pods when the node has less than ~7.7 GB free; the stock runner image
+      # leaves too little, so drop toolchains this job does not use.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
       - name: Smoke test (apply, Argo CD Synced and Healthy, destroy)
+        # An explicit shell enables pipefail: without it `| tee` would hide a failing smoke.sh.
+        shell: bash
         run: bash scripts/smoke.sh 2>&1 | tee smoke.log
       - name: Cleanup
         if: always()
