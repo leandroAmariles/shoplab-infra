@@ -38,8 +38,12 @@ réplica y no escalan con HPA. Los Deployments no fijan `replicas`: las gobierna
 
 ## Imágenes
 
-Backend, frontend e ingest usan `ghcr.io/leandroamariles/<servicio>` con el tag `vX.Y.Z` de un release (los tags de
-versión son inmutables, LAB-78); se fijan en `images:` de cada overlay. Postgres (`pgvector/pgvector`) y Ollama
+Backend, frontend e ingest usan `ghcr.io/leandroamariles/<servicio>` y se fijan en `images:` de cada overlay. Hoy
+van por **digest** de la imagen construida desde `main`, porque los tags `vX.Y.Z` (inmutables, LAB-78) aún no existen
+en GHCR. Para obtener el digest de un commit:
+`curl -sI -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.oci.image.index.v1+json" https://ghcr.io/v2/leandroamariles/<servicio>/manifests/<sha-completo>`
+(cabecera `docker-content-digest`; el token anónimo sale de `https://ghcr.io/token?scope=repository:leandroamariles/<servicio>:pull`).
+Cuando se publiquen los tags de versión, cada ambiente se promueve con `newTag: vX.Y.Z`. Postgres (`pgvector/pgvector`) y Ollama
 llevan su versión en la base, la misma que `docker-compose.yml` de `shoplab-helpdesk`. Ninguna imagen puede usar
 `latest` ni quedar sin tag: lo comprueba `scripts/policy-check.sh`.
 
