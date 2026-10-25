@@ -56,6 +56,17 @@ variable "secrets" {
   sensitive   = true
 }
 
+variable "app_environments" {
+  description = "Ambientes de k8s/overlays cuyas claves se crean en Secrets Manager (por ejemplo [\"dev\"])"
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for e in var.app_environments : contains(["dev", "staging", "prod"], e)])
+    error_message = "Solo se admiten los ambientes dev, staging y prod"
+  }
+}
+
 variable "parameters" {
   description = "Nombre => valor de parámetros no sensibles (SSM)"
   type        = map(string)
