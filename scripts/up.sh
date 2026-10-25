@@ -5,12 +5,21 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 command -v docker >/dev/null || die "Docker no está instalado"
 command -v terraform >/dev/null || die "Terraform no está instalado"
 
+# Los valores de secretos vienen de fuera del repositorio: se avisa antes de levantar nada.
+if [ ! -f "$ENV_DIR/secrets.auto.tfvars" ] && [ -z "${TF_VAR_secrets:-}" ]; then
+  die "faltan los valores de secretos: copia $ENV_DIR/secrets.auto.tfvars.example como secrets.auto.tfvars y complétalo (o define TF_VAR_secrets)"
+fi
+
 # Puerto 4566 ocupado por algo que no es nuestro Floci.
 if ! docker ps --format '{{.Names}}' | grep -qx shoplab-floci; then
   if curl -fsS "$EMULATOR_URL/_localstack/health" >/dev/null 2>&1; then
     die "El puerto 4566 ya lo usa otro emulador; deténlo o cambia EMULATOR_URL"
   fi
 fi
+
+# down.sh necesita el mismo modo para poder destruir (floci o kind).
+CLUSTER_MODE="${CLUSTER_MODE:-floci}"
+printf '%s\n' "$CLUSTER_MODE" > "$ENV_DIR/.cluster-mode"
 
 log "levantando Floci"
 docker compose -f "$ROOT/docker-compose.yml" up -d
@@ -22,6 +31,6 @@ bash "$ROOT/scripts/init-env.sh"
 log "aplicando el entorno $ENV_NAME"
 terraform -chdir="$ENV_DIR" apply -input=false -auto-approve \
   -var "environment=$ENV_NAME" -var "emulator_endpoint=$EMULATOR_URL" \
-  -var "cluster_mode=${CLUSTER_MODE:-floci}"
+  -var "cluster_mode=$CLUSTER_MODE"
 
 log "listo. kubectl --kubeconfig $ENV_DIR/kubeconfig.yaml get pods -A"

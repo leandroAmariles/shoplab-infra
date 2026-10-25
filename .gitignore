@@ -21,3 +21,11 @@ Thumbs.db
 .idea/
 *.iml
 .vscode/
+
+# Modo de cluster recordado por up.sh
+.cluster-mode
+
+# Locks de módulos (los genera terraform test; solo se versionan los de las raíces)
+terraform/modules/*/.terraform.lock.hcl
+# Artefactos del provider kind
+shoplab-*-config

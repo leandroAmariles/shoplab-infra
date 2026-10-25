@@ -1,5 +1,5 @@
 # Orquesta el flujo local: Floci -> bootstrap del estado -> terraform apply.
-# Los objetivos se completan en las tareas T019, T022, T033 y T036 de LAB-98.
+# Cada objetivo delega en scripts/*.sh, que también se pueden ejecutar sin make.
 .PHONY: up down bootstrap test test-integration scan
 
 bootstrap:
@@ -10,13 +10,13 @@ up:
 	@bash scripts/up.sh
 
 down:
-	@echo "pendiente: T022" && exit 1
+	@bash scripts/down.sh
 
 test:
-	@echo "pendiente: T036" && exit 1
+	@bash scripts/test.sh
 
 test-integration:
-	@echo "pendiente: T036" && exit 1
+	@bash scripts/test-integration.sh
 
 scan:
-	@echo "pendiente: T033" && exit 1
+	@bash scripts/scan.sh

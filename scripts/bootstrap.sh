@@ -6,4 +6,5 @@ BOOT_DIR="$ENV_DIR/bootstrap"
 wait_for_emulator
 log "bootstrap del estado ($ENV_NAME)"
 terraform -chdir="$BOOT_DIR" init -input=false
-terraform -chdir="$BOOT_DIR" apply -input=false -auto-approve -var "environment=$ENV_NAME" -var "emulator_endpoint=$EMULATOR_URL"
+terraform -chdir="$BOOT_DIR" apply -input=false -auto-approve -state="$BOOT_STATE" \
+  -var "environment=$ENV_NAME" -var "emulator_endpoint=$EMULATOR_URL"

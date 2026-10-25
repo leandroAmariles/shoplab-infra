@@ -1,0 +1,4 @@
+apiVersion: v2
+name: demo-external-secret
+description: ExternalSecret de demostración que sincroniza un secreto de Secrets Manager (Floci)
+version: 0.1.0

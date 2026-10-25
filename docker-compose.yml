@@ -1,4 +1,7 @@
 # Emulador de AWS local (Floci, licencia MIT). Imagen fijada: nunca :latest.
+# El nombre del proyecto fija el de la red (shoplab-infra_default), que usa scripts/floci-ip.sh.
+name: shoplab-infra
+
 services:
   floci:
     image: floci/floci:2.3.0

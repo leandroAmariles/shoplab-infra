@@ -10,5 +10,9 @@ terraform {
       source  = "hashicorp/external"
       version = "2.4.2"
     }
+    kind = {
+      source  = "tehcyx/kind"
+      version = "0.13.0"
+    }
   }
 }

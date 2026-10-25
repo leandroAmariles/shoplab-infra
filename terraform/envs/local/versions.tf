@@ -18,6 +18,10 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "3.4.0"
     }
+    kind = {
+      source  = "tehcyx/kind"
+      version = "0.13.0"
+    }
     local = {
       source  = "hashicorp/local"
       version = "2.9.1"

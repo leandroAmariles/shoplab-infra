@@ -17,9 +17,9 @@ variable "emulator_endpoint" {
 }
 
 variable "cluster_secrets_endpoint" {
-  description = "Endpoint de Floci visto desde los pods del clúster"
+  description = "Endpoint de Floci visto desde los pods; vacío = se calcula según cluster_mode"
   type        = string
-  default     = "http://host.docker.internal:4566"
+  default     = ""
 }
 
 variable "cluster_mode" {
@@ -42,4 +42,16 @@ variable "chart_versions" {
     kube_prometheus_stack = "92.13.1"
     argo_cd               = "10.11.1"
   }
+}
+
+variable "secrets" {
+  description = "Nombre => valor de los secretos de la app; se proporciona fuera de git (secrets.auto.tfvars o TF_VAR_secrets)"
+  type        = map(string)
+  sensitive   = true
+}
+
+variable "parameters" {
+  description = "Nombre => valor de parámetros no sensibles (SSM)"
+  type        = map(string)
+  default     = {}
 }
