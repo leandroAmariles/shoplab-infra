@@ -33,8 +33,8 @@ variable "argocd_redis_image_repository" {
   default     = "ecr-public.aws.com/docker/library/redis"
 
   validation {
-    condition     = !endswith(var.argocd_redis_image_repository, ":latest") && !strcontains(var.argocd_redis_image_repository, ":")
-    error_message = "Indica solo el repositorio, sin tag: el tag lo fija el chart (sin latest)"
+    condition     = !strcontains(var.argocd_redis_image_repository, ":")
+    error_message = "Indica solo el repositorio, sin tag: el tag lo fija el chart"
   }
 }
 
