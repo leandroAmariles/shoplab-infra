@@ -1,0 +1,27 @@
+# El host es un marcador: cada overlay lo sustituye. Ingest no se publica (uso interno).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shoplab
+  labels:
+    app.kubernetes.io/name: ingress
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: shoplab.invalid
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  name: http
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  name: http

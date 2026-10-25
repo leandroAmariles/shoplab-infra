@@ -27,7 +27,7 @@ spec:
   source:
     repoURL: https://github.com/example/shoplab-infra
     targetRevision: main
-    path: kubernetes/overlays/dev
+    path: k8s/overlays/dev
   destination:
     server: https://kubernetes.default.svc
     namespace: shoplab

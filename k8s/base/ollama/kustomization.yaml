@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - statefulset.yaml
+  - service.yaml
+configMapGenerator:
+  - name: ollama-entrypoint
+    files:
+      - entrypoint.sh
+  - name: ollama-config
+    literals:
+      - OLLAMA_CHAT_MODEL=llama3.2:3b
+      - OLLAMA_EMBED_MODEL=bge-m3

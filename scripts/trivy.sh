@@ -7,3 +7,9 @@ command -v trivy >/dev/null || die "falta trivy (ver versions.env y scripts/chec
 cd "$ROOT"
 log "trivy config terraform/"
 trivy config --severity HIGH,CRITICAL --ignorefile .trivyignore --exit-code 1 --skip-dirs '**/.terraform' terraform
+
+# Manifiestos: se analiza la salida renderizada de cada overlay (scripts/kustomize-build.sh), no los archivos sueltos.
+RENDER_DIR="${RENDER_DIR:-$ROOT/.rendered}"
+[ -d "$RENDER_DIR" ] || die "no hay overlays renderizados en $RENDER_DIR (ejecuta scripts/kustomize-build.sh)"
+log "trivy config ${RENDER_DIR#"$ROOT"/}"
+trivy config --severity HIGH,CRITICAL --ignorefile .trivyignore --exit-code 1 "$RENDER_DIR"

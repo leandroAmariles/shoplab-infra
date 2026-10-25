@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: backend-credentials
+  namespace: shoplab-dev
+type: Opaque
+stringData:
+  SPRING_DATASOURCE_PASSWORD: PLACEHOLDER
