@@ -20,7 +20,7 @@ Cada pull request y cada push a `main` ejecutan `.github/workflows/ci.yml`. La l
 | `kustomize` | `kustomize build` de `k8s/overlays/{dev,staging,prod}`, `kubeconform -strict` y políticas de manifiestos (ver abajo) | `make kustomize policies test-policies` |
 | `trivy` | Trivy config sobre `terraform/` (y, en `kustomize`, sobre los manifiestos renderizados); falla con HIGH/CRITICAL no exceptuados y sube el SARIF a Security | `make trivy` |
 | `plan` | `terraform plan` contra un Floci efímero; lo publica como un único comentario del PR (se actualiza en cada push) | `make plan` (requiere Docker) |
-| `smoke` | `terraform apply` sobre Floci, apunta la raíz a la revisión de la PR, espera a que `shoplab-root` esté `Synced` y `Healthy` y a que cree `shoplab-dev`, `shoplab-staging` y `shoplab-prod`, y destruye | `make smoke` (requiere Docker) |
+| `smoke` | `terraform apply` sobre Floci, apunta la raíz a la revisión de la PR, espera a que `shoplab-root` esté `Synced` y `Healthy` y a que cree `shoplab-dev`, y destruye | `make smoke` (requiere Docker) |
 | `ci-gate` | Resume el resultado: falla si algún job falló o se canceló; los omitidos no bloquean | — |
 
 Checks requeridos del ruleset de `main` (`.github/rulesets/main-protection.json`): `ci-gate` y `pr-title`.
@@ -46,8 +46,8 @@ imagen de Floci, actualiza también `.tflint.hcl` y `docker-compose.yml`: el scr
 
 `k8s/base` describe backend, frontend, ingest, Postgres con pgvector, Ollama e ingress; cada overlay de
 `k8s/overlays/` (`dev`, `staging`, `prod`) fija namespace, imágenes, recursos, HPA y configuración, y
-`k8s/argocd/` contiene la `Application` raíz (`root.yaml`, la crea Terraform) y una `Application` por ambiente que la
-raíz gestiona (ver [docs/kustomize.md](docs/kustomize.md) y [docs/gitops.md](docs/gitops.md)). Al añadir un overlay hay
+`k8s/argocd/` contiene la `Application` raíz (`root.yaml`, la crea Terraform) y una `Application` por ambiente;
+`k8s/argocd-local/` selecciona solo `dev` para el clúster local y es lo que sincroniza la raíz (ver [docs/kustomize.md](docs/kustomize.md) y [docs/gitops.md](docs/gitops.md)). Al añadir un overlay hay
 que listarlo en `OVERLAYS` de `versions.env`. `scripts/policy-check.sh` revisa la salida
 renderizada (overlays y Applications) y falla con una línea `regla | overlay | recurso | valor` por violación:
 

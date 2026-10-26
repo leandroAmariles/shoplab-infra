@@ -24,11 +24,17 @@ No hay ningún comando de despliegue: el clúster refleja `main`.
 
 ```text
 Terraform ── instala ──▶ Argo CD (+ su ingress) ── crea ──▶ Application shoplab-root
-                                                              └─ sincroniza k8s/argocd
-                                                                   ├─ shoplab-dev      → k8s/overlays/dev      (ns shoplab-dev)
-                                                                   ├─ shoplab-staging  → k8s/overlays/staging  (ns shoplab-staging)
-                                                                   └─ shoplab-prod     → k8s/overlays/prod     (ns shoplab-prod)
+                                                              └─ sincroniza k8s/argocd-local (solo dev)
+                                                                   └─ shoplab-dev → k8s/overlays/dev (ns shoplab-dev)
+
+k8s/argocd (los tres ambientes; es lo que sincronizaría una raíz de un clúster real)
+   ├─ shoplab-dev      → k8s/overlays/dev      (ns shoplab-dev)
+   ├─ shoplab-staging  → k8s/overlays/staging  (ns shoplab-staging)
+   └─ shoplab-prod     → k8s/overlays/prod     (ns shoplab-prod)
 ```
+
+En local solo se despliega `dev`: el nodo de k3s de Floci tiene unos 2 CPU y los tres ambientes juntos dejaban decenas
+de pods `Pending` por falta de CPU. `staging` y `prod` siguen definidos y se validan en CI, listos para un clúster real.
 
 | Lo gestiona | Qué | Dónde cambia |
 | --- | --- | --- |
@@ -44,8 +50,12 @@ La raíz es lo único de `k8s/argocd/` que cambia por Terraform: no se gestiona 
 | Archivo | Función |
 | --- | --- |
 | `root.yaml` | `Application` raíz (app-of-apps). Terraform la lee y la crea al arrancar |
-| `kustomization.yaml` | Lista las `Application` de ambiente que gestiona la raíz |
+| `kustomization.yaml` | Lista las `Application` de los tres ambientes |
 | `application-dev.yaml`, `application-staging.yaml`, `application-prod.yaml` | Una `Application` por ambiente, apuntando a su overlay |
+
+`k8s/argocd-local/kustomization.yaml` parte de `k8s/argocd` y retira las `Application` de `staging` y `prod`; es lo que
+sincroniza la raíz del clúster local (`root.yaml`, `spec.source.path`). Para desplegar otro ambiente en local, quita su
+parche `$patch: delete` de ese archivo.
 
 Todas llevan sincronización automática con `prune` y `selfHeal`, `repoURL` real, `targetRevision: main` y el finalizer
 `resources-finalizer.argocd.argoproj.io` (retira los recursos al borrar la `Application`).
@@ -68,19 +78,20 @@ El mismo `port-forward` sirve el ingress de la aplicación (`shoplab.localtest.m
 
 ## Tareas habituales
 
-### Cambiar un valor de `staging` y revertirlo
+### Cambiar un valor de `dev` y revertirlo
 
-1. Edita, por ejemplo, el mínimo de réplicas en `k8s/overlays/staging/hpa.yaml`.
+1. Edita, por ejemplo, el mínimo de réplicas en `k8s/overlays/dev/hpa.yaml`.
 2. Abre la PR, espera al CI en verde y fusiona en `main`.
-3. Observa: `kubectl -n argocd get application shoplab-staging -w` pasa a `OutOfSync` y vuelve a `Synced`.
+3. Observa: `kubectl -n argocd get application shoplab-dev -w` pasa a `OutOfSync` y vuelve a `Synced`.
 4. Para revertir, usa `git revert` del commit de fusión y fusiona esa PR: Argo CD vuelve al estado anterior.
 
 ### Añadir o quitar un ambiente o una `Application`
 
 - Añadir: crea `k8s/argocd/application-<nombre>.yaml` (copia una existente) y lístalo en
-  `k8s/argocd/kustomization.yaml`. Aparece en Argo CD tras fusionar.
-- Quitar: borra la línea de `kustomization.yaml` y el archivo. La raíz elimina la `Application` y, por el finalizer,
-  también sus recursos.
+  `k8s/argocd/kustomization.yaml`. En local, además, no debe tener un parche `$patch: delete` en
+  `k8s/argocd-local/kustomization.yaml`. Aparece en Argo CD tras fusionar.
+- Quitar: borra la línea de `kustomization.yaml` y el archivo (o añade el parche de borrado en `argocd-local`). La raíz
+  elimina la `Application` y, por el finalizer, también sus recursos.
 
 ### Cambiar la `Application` raíz
 
@@ -91,7 +102,7 @@ actualiza sola, porque Terraform la crea.
 
 ```bash
 kubectl -n argocd get applications
-kubectl -n argocd describe application shoplab-staging
+kubectl -n argocd describe application shoplab-dev
 ```
 
 | Estado | Causa habitual | Qué hacer |
@@ -109,10 +120,13 @@ kubectl -n argocd describe application shoplab-staging
   (ver [`kustomize.md`](kustomize.md)); el repositorio se lee sin credenciales porque es público.
 - **El CI rechaza** un `repoURL` de plantilla (`CAMBIA-ESTE-OWNER`), un `targetRevision` distinto de `main`, una
   `Application` sin finalizer y una raíz listada en `k8s/argocd/kustomization.yaml`.
-- **Local:** la raíz crea los tres ambientes en el mismo clúster, aislados por namespace; necesita memoria para los
-  tres (se recomiendan 16 GB para Docker). El k3s de Floci no trae `StorageClass`, así que los PVC de Postgres y Ollama
-  quedan `Pending` y un ambiente no llega a `Healthy` hasta que haya una (ver [`kustomize.md`](kustomize.md)).
-- **Prueba de humo del CI:** exige `shoplab-root` `Synced` y `Healthy` y que cree `shoplab-dev`, `shoplab-staging` y
-  `shoplab-prod`; no exige que estas queden `Healthy` por lo anterior. Como Argo CD sincroniza git y la PR aún no está
-  en `main`, el smoke apunta la raíz a la revisión de la PR solo durante la prueba (`SMOKE_ROOT_REVISION`); `root.yaml`
-  y las políticas siguen exigiendo `targetRevision: main`.
+- **Local:** la raíz despliega solo `dev` (CPU del nodo de Floci). El k3s de Floci tampoco trae `StorageClass`, así que
+  los PVC de Postgres y Ollama quedan `Pending` y `dev` no llega a `Healthy` hasta que haya una (ver
+  [`kustomize.md`](kustomize.md)).
+- **Prueba de humo del CI:** exige `shoplab-root` `Synced` y `Healthy` y que cree `shoplab-dev`; no exige que `dev`
+  quede `Healthy` por lo anterior. Como Argo CD sincroniza git y la PR aún no está en `main`, el smoke apunta la raíz a
+  la revisión de la PR solo durante la prueba (`SMOKE_ROOT_REVISION`); `root.yaml` y las políticas siguen exigiendo
+  `targetRevision: main`.
+- **Puerto 8080:** si ya lo usa otra aplicación local, el `port-forward` no enlaza y las respuestas son de esa
+  aplicación. Usa otro puerto (`... port-forward svc/ingress-nginx-controller 18080:80`) y
+  `curl -H 'Host: argocd.localtest.me' http://127.0.0.1:18080/`.

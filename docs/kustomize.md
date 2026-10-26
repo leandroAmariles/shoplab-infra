@@ -52,19 +52,19 @@ llevan su versión en la base, la misma que `docker-compose.yml` de `shoplab-hel
 No hay recursos `Secret` en git (regla `PLAIN_SECRET`). Cada componente que necesita una credencial declara un
 `ExternalSecret` que lee de Secrets Manager mediante el `ClusterSecretStore` `aws-secrets-manager` (LAB-98). La base
 usa la clave `/shoplab/ENVIRONMENT/postgres-password` y cada overlay sustituye `ENVIRONMENT` por su nombre, de modo que
-un ambiente solo lee sus propias claves. Los valores los crea el módulo `secrets` de Terraform. Como la `Application`
-raíz de Argo CD despliega los tres ambientes, `make up` crea por defecto las claves `/shoplab/<ambiente>/...` de `dev`,
-`staging` y `prod` (variable `app_environments`); para crear solo algunas:
+un ambiente solo lee sus propias claves. Los valores los crea el módulo `secrets` de Terraform. En local solo se
+despliega `dev`, así que `make up` crea por defecto las claves `/shoplab/dev/...` (variable `app_environments`); si
+despliegas otro ambiente, añádelo:
 
 ```bash
-TF_VAR_app_environments='["dev"]' make up
+TF_VAR_app_environments='["dev","staging"]' make up
 ```
 
 ## Desplegar un overlay en el clúster local
 
-`make up` deja Argo CD con la `Application` raíz `shoplab-root`, que crea `shoplab-dev`, `shoplab-staging` y
-`shoplab-prod` desde `main`: no hay que aplicar nada a mano. El flujo completo y cómo entrar a la interfaz están en
-[`gitops.md`](gitops.md).
+`make up` deja Argo CD con la `Application` raíz `shoplab-root`, que crea `shoplab-dev` desde `main`: no hay que
+aplicar nada a mano. Solo `dev` porque el nodo de k3s de Floci (unos 2 CPU) no tiene CPU para más de un ambiente; el
+flujo completo, cómo entrar a la interfaz y cómo desplegar otro ambiente están en [`gitops.md`](gitops.md).
 
 El k3s de Floci no trae `StorageClass`, así que los PVC de Postgres y Ollama quedan en `Pending` hasta que el clúster
 tenga una por defecto (en un EKS real se usa la del clúster). En local basta una clase sin provisionador con un PV
