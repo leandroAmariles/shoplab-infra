@@ -36,6 +36,9 @@ step_validate() {
     tmp="$(mktemp -d)"; tmp="$(cygpath -m "$tmp" 2>/dev/null || printf '%s' "$tmp")"
     mkdir -p "$tmp/terraform"
     cp -r "$ROOT/terraform/modules" "$tmp/terraform/modules"
+    # El ambiente lee la Application raíz de Argo CD (file() se evalúa en validate): se copia a la misma ruta relativa.
+    mkdir -p "$tmp/k8s/argocd"
+    cp "$ROOT/k8s/argocd/root.yaml" "$tmp/k8s/argocd/root.yaml"
     mkdir -p "$tmp/terraform/envs/$name"
     (cd "$env_dir" && tar --exclude=.terraform --exclude='*.tfstate*' --exclude=kubeconfig.yaml -cf - .) \
       | (cd "$tmp/terraform/envs/$name" && tar -xf -)

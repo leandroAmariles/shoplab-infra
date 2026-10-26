@@ -19,12 +19,13 @@ CRD_SCHEMAS='https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Gro
 fail_msg() { log "$*"; [ "${GITHUB_ACTIONS:-}" != true ] || echo "::error::$*"; }
 
 fail=0
-# Por cada ambiente se construye el overlay de cargas de trabajo ($KUSTOMIZE_DIR/<overlay>) y su Application de
-# Argo CD ($ARGOCD_DIR/<overlay>); las políticas leen ambos desde RENDER_DIR.
+# Se construye cada overlay de cargas de trabajo ($KUSTOMIZE_DIR/<overlay>) y, una sola vez, el directorio de las
+# Application de Argo CD ($ARGOCD_DIR, una por ambiente); las políticas leen todo desde RENDER_DIR.
 targets=()
 for overlay in ${OVERLAYS//,/ }; do
-  targets+=("$KUSTOMIZE_DIR/$overlay|$overlay" "$ARGOCD_DIR/$overlay|argocd-$overlay")
+  targets+=("$KUSTOMIZE_DIR/$overlay|$overlay")
 done
+targets+=("$ARGOCD_DIR|argocd")
 for target in "${targets[@]}"; do
   rel="${target%%|*}"; name="${target##*|}"
   dir="$ROOT/$rel"
@@ -45,4 +46,24 @@ for target in "${targets[@]}"; do
   log "kubeconform: $rel ($resources recursos)"
   kubeconform -strict -summary -schema-location default -schema-location "$CRD_SCHEMAS" "$out" || fail=1
 done
+
+# La Application raíz (root.yaml) vive junto a las de ambiente pero no entra en el kustomization: la crea Terraform y no
+# se gestiona a sí misma. Se valida aparte; si aparece también en la salida de $ARGOCD_DIR hay un bucle de autogestión.
+root="$ROOT/$ARGOCD_DIR/root.yaml"
+if [ ! -f "$root" ]; then
+  fail_msg "falta la Application raíz de Argo CD ($ARGOCD_DIR/root.yaml)"
+  fail=1
+else
+  cp "$root" "$RENDER_DIR/argocd-root.yaml"
+  root_name="$(yq eval '.metadata.name' "$root")"
+  if [ -f "$RENDER_DIR/argocd.yaml" ] \
+    && [ -n "$(yq eval --no-doc "select(.kind == \"Application\" and .metadata.name == \"$root_name\") | .metadata.name" \
+      "$RENDER_DIR/argocd.yaml")" ]; then
+    fail_msg "'$ARGOCD_DIR/kustomization.yaml' incluye la Application raíz '$root_name': quítala (se gestionaría a sí misma)"
+    fail=1
+  fi
+  log "kubeconform: $ARGOCD_DIR/root.yaml"
+  kubeconform -strict -summary -schema-location default -schema-location "$CRD_SCHEMAS" "$RENDER_DIR/argocd-root.yaml" \
+    || fail=1
+fi
 exit "$fail"

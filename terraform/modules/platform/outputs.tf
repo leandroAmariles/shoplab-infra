@@ -1,6 +1,6 @@
 output "argocd_url" {
-  description = "URL de Argo CD tras ejecutar: kubectl -n argocd port-forward svc/argo-cd-argocd-server 8080:80"
-  value       = "http://localhost:8080"
+  description = "URL de Argo CD por el ingress, tras ejecutar: kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 8080:80"
+  value       = "http://${var.argocd_host}:8080"
 }
 
 output "installed_components" {

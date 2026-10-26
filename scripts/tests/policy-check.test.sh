@@ -23,6 +23,7 @@ expect bad-repourl 1 TEMPLATE_REPO_URL
 expect bad-revision 1 TARGET_REVISION_NOT_MAIN
 expect good-externalsecret 0
 expect bad-secret 1 PLAIN_SECRET
+expect bad-nofinalizer 1 APPLICATION_NO_FINALIZER
 
 bash "$check" /no/existe.yaml >/dev/null 2>&1; code=$?
 if [ "$code" -eq 2 ]; then echo "ok    archivo inexistente -> 2"; else echo "FALLA archivo inexistente: salida $code (esperada 2)"; fail=1; fi

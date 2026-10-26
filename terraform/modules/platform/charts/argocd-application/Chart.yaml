@@ -1,4 +1,4 @@
 apiVersion: v2
 name: argocd-application
-description: Application inicial que Argo CD sincroniza
-version: 0.1.0
+description: Application inicial (raíz) que Argo CD sincroniza; renderiza el manifiesto recibido sin modificarlo
+version: 0.2.0

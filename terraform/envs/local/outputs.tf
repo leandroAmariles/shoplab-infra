@@ -10,7 +10,7 @@ output "kubeconfig" {
 }
 
 output "argocd_url" {
-  description = "Acceso a Argo CD (requiere kubectl port-forward)"
+  description = "Acceso a Argo CD por el ingress (requiere kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 8080:80)"
   value       = module.platform.argocd_url
 }
 

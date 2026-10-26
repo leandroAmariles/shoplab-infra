@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Políticas sobre manifiestos ya renderizados (salida de `kustomize build`). Reglas: contracts/policy-rules.md de LAB-99.
 #   IMAGE_LATEST | IMAGE_NO_TAG | TEMPLATE_REPO_URL | TARGET_REVISION_NOT_MAIN | PLAIN_SECRET (LAB-80)
+#   | APPLICATION_NO_FINALIZER (LAB-79)
 # Uso: policy-check.sh <rendered.yaml> [<overlay>]. Salida: 0 sin violaciones, 1 con alguna, 2 por error de uso o de lectura.
 set -uo pipefail
 
@@ -46,6 +47,16 @@ while IFS=$'\t' read -r id revision; do
   [ -n "$id" ] || continue
   [ "$revision" = main ] || report TARGET_REVISION_NOT_MAIN "$id" "targetRevision=$revision"
 done <<< "$revisions"
+
+# Toda Application lleva el finalizer de Argo CD: sin él, quitarla de git deja sus recursos huérfanos en el clúster.
+finalizers="$(yq eval --no-doc "select(.kind == \"Application\") | $ID as \$id |
+  \$id + \"	\" + ((.metadata.finalizers // []) | contains([\"resources-finalizer.argocd.argoproj.io\"]) | tostring)" "$file")" \
+  || { echo "no se pudo leer $file" >&2; exit 2; }
+
+while IFS=$'\t' read -r id has_finalizer; do
+  [ -n "$id" ] || continue
+  [ "$has_finalizer" = true ] || report APPLICATION_NO_FINALIZER "$id" "falta resources-finalizer.argocd.argoproj.io"
+done <<< "$finalizers"
 
 # Ningún recurso Secret en la salida: las credenciales se declaran como ExternalSecret y nunca viven en git.
 secrets="$(yq eval --no-doc "select(.kind == \"Secret\") | $ID" "$file")" \

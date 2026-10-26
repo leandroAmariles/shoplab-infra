@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Prueba de humo: apply completo sobre Floci, espera a que todas las Application de Argo CD estén Synced y Healthy
-# y destruye. El destroy y la limpieza se ejecutan siempre (trap), incluso si algo falla o se cancela.
+# Prueba de humo: apply completo sobre Floci, espera a que la Application raíz y la de dev de Argo CD estén Synced y
+# Healthy (y a que la raíz haya creado las de staging y prod) y destruye. El destroy y la limpieza se ejecutan siempre (trap), incluso si algo falla o se cancela.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 command -v kubectl >/dev/null || die "kubectl no está instalado"
@@ -86,19 +86,35 @@ bash "$ROOT/scripts/up.sh" || {
   bash "$ROOT/scripts/up.sh"
 }
 
-log "esperando a Argo CD (Synced + Healthy), máximo ${ARGOCD_TIMEOUT}s"
+# Argo CD sincroniza git, no el árbol de trabajo: en una PR, k8s/argocd de main aún no tiene los cambios y la raíz no
+# crearía las Application de ambiente. En CI (SMOKE_ROOT_REVISION) se apunta la raíz a la revisión de la PR solo durante
+# esta prueba; root.yaml en git y las políticas siguen exigiendo targetRevision: main. Las hijas siguen en main.
+if [ -n "${SMOKE_ROOT_REVISION:-}" ]; then
+  log "apuntando shoplab-root a la revisión $SMOKE_ROOT_REVISION (solo en esta prueba)"
+  kc -n argocd patch application shoplab-root --type merge \
+    -p "{\"spec\":{\"source\":{\"targetRevision\":\"$SMOKE_ROOT_REVISION\"}}}"
+fi
+
+# La raíz crea una Application por ambiente. Un runner de CI no puede dejarlas Healthy: el k3s de Floci no trae
+# StorageClass (los PVC de Postgres y Ollama quedan Pending, ver docs/kustomize.md) y staging/prod piden más recursos.
+# Se exige la raíz Synced/Healthy y que cree las de ambiente; la convergencia completa se prueba en local.
+log "esperando a Argo CD: Synced + Healthy [${ARGOCD_READY_APPS//,/ }] y creadas [${ARGOCD_PRESENT_APPS//,/ }], máximo ${ARGOCD_TIMEOUT}s"
 deadline=$((SECONDS + ARGOCD_TIMEOUT))
 while :; do
-  total="$(kc get applications -n argocd --no-headers 2>/dev/null | wc -l | tr -d ' ')"
-  ready="$(kc get applications -n argocd \
-    -o jsonpath='{range .items[*]}{.status.sync.status}/{.status.health.status}{"\n"}{end}' 2>/dev/null \
-    | grep -c '^Synced/Healthy$' || true)"
-  if [ "$total" -gt 0 ] && [ "$ready" -eq "$total" ]; then
-    log "Argo CD listo: $ready/$total aplicaciones Synced y Healthy"
+  pending=()
+  for app in ${ARGOCD_READY_APPS//,/ }; do
+    state="$(kc get application "$app" -n argocd -o jsonpath='{.status.sync.status}/{.status.health.status}' 2>/dev/null || true)"
+    [ "$state" = "Synced/Healthy" ] || pending+=("$app (${state:-ausente})")
+  done
+  for app in ${ARGOCD_PRESENT_APPS//,/ }; do
+    kc get application "$app" -n argocd >/dev/null 2>&1 || pending+=("$app (no creada)")
+  done
+  if [ "${#pending[@]}" -eq 0 ]; then
+    log "Argo CD listo: [${ARGOCD_READY_APPS//,/ }] Synced y Healthy; [${ARGOCD_PRESENT_APPS//,/ }] creadas"
     break
   fi
   if [ "$SECONDS" -ge "$deadline" ]; then
-    die "Argo CD no quedó Synced y Healthy en ${ARGOCD_TIMEOUT}s ($ready/$total aplicaciones listas)"
+    die "Argo CD no llegó al estado esperado en ${ARGOCD_TIMEOUT}s; pendientes: ${pending[*]}"
   fi
   sleep 10
 done

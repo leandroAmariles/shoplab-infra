@@ -1,0 +1,31 @@
+# Application raíz (app-of-apps): sincroniza este directorio (k8s/argocd), cuyo kustomization.yaml lista las
+# Application de cada ambiente. La crea Terraform al arrancar el entorno leyendo este mismo archivo
+# (terraform/envs/local/main.tf), así git es la única fuente de verdad. NO se lista en kustomization.yaml: la raíz no
+# se gestiona a sí misma. Cambiar este archivo exige `terraform apply`; el resto cambia solo con git.
+# Las políticas de CI exigen targetRevision: main, un repoURL sin el placeholder y el finalizer.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: shoplab-root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/leandroAmariles/shoplab-infra
+    targetRevision: main
+    path: k8s/argocd
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
