@@ -13,13 +13,13 @@ labels:
 images:
 - name: ghcr.io/leandroamariles/backend
   newName: ghcr.io/leandroamariles/backend
-  newTag: 2e832d16fed5a247d846c3c4ad4da819f1397246
+  newTag: 77aebd130a26691d3b008efdd880be6d02f0bac2
 - name: ghcr.io/leandroamariles/frontend
   newName: ghcr.io/leandroamariles/frontend
-  newTag: 2e832d16fed5a247d846c3c4ad4da819f1397246
+  newTag: 77aebd130a26691d3b008efdd880be6d02f0bac2
 - name: ghcr.io/leandroamariles/ingest
   newName: ghcr.io/leandroamariles/ingest
-  newTag: 2e832d16fed5a247d846c3c4ad4da819f1397246
+  newTag: 77aebd130a26691d3b008efdd880be6d02f0bac2
 configMapGenerator:
 - behavior: merge
   literals:
