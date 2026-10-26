@@ -2,7 +2,7 @@
 mock_provider "aws" {
   mock_resource "aws_iam_role" {
     defaults = {
-      arn = "arn:aws:iam::000000000000:role/shoplab-local-eks"
+      arn = "arn:aws:iam::000000000000:role/shoplab-dev-eks"
     }
   }
 
@@ -39,7 +39,7 @@ mock_provider "external" {
 }
 
 variables {
-  cluster_name = "shoplab-local"
+  cluster_name = "shoplab-dev"
 }
 
 run "exposes_connection_contract" {

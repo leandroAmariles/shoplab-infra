@@ -4,8 +4,8 @@ set -euo pipefail
 
 # pwd -W devuelve la ruta Windows en Git Bash (terraform.exe no entiende /c/...); en Linux/macOS usa pwd.
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && { pwd -W 2>/dev/null || pwd; })"
-ENV_NAME="${ENV:-local}"
-# Cada ambiente tiene su raíz en terraform/envs/<ENV>; ENV_DIR permite reutilizar una raíz (p. ej. para probar
+ENV_NAME="${ENV:-dev}"
+# El ambiente tiene su raíz en terraform/envs/<ENV>; ENV_DIR permite reutilizar la raíz (p. ej. para probar
 # el aislamiento de estados con otro ENV). El estado del bootstrap es un archivo local distinto por ambiente.
 ENV_DIR="${ENV_DIR:-$ROOT/terraform/envs/$ENV_NAME}"
 BOOT_STATE="terraform.$ENV_NAME.tfstate"

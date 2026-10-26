@@ -1,7 +1,7 @@
 variable "environment" {
   description = "Nombre del ambiente"
   type        = string
-  default     = "local"
+  default     = "dev"
 }
 
 variable "region" {
@@ -54,17 +54,6 @@ variable "secrets" {
   description = "Nombre => valor de los secretos de la app; se proporciona fuera de git (secrets.auto.tfvars o TF_VAR_secrets)"
   type        = map(string)
   sensitive   = true
-}
-
-variable "app_environments" {
-  description = "Ambientes de k8s/overlays cuyas claves se crean en Secrets Manager; en local la raíz de Argo CD despliega solo dev"
-  type        = list(string)
-  default     = ["dev"]
-
-  validation {
-    condition     = alltrue([for e in var.app_environments : contains(["dev", "staging", "prod"], e)])
-    error_message = "Solo se admiten los ambientes dev, staging y prod"
-  }
 }
 
 variable "parameters" {

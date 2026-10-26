@@ -1,5 +1,5 @@
 # Integración contra Floci (necesita el emulador levantado): se ejecuta con scripts/test-integration.sh.
-# Usa el ambiente "itest" para no chocar con el clúster "shoplab-local" y destruye todo al terminar.
+# Usa el ambiente "itest" para no chocar con el clúster "shoplab-dev" y destruye todo al terminar.
 variables {
   environment = "itest"
   secrets = {

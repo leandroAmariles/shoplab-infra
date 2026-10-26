@@ -1,7 +1,7 @@
 variable "environment" {
   description = "Ambiente cuyo estado se prepara"
   type        = string
-  default     = "local"
+  default     = "dev"
 }
 
 variable "region" {

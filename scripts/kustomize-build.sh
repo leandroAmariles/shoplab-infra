@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Construye cada overlay (dev, staging, prod) con kustomize y valida el resultado con kubeconform. Falla si un overlay
+# Construye el overlay dev con kustomize y valida el resultado con kubeconform. Falla si un overlay
 # no existe, rinde 0 recursos o tiene un recurso sin esquema. La salida renderizada queda en RENDER_DIR para las políticas.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
@@ -20,12 +20,12 @@ fail_msg() { log "$*"; [ "${GITHUB_ACTIONS:-}" != true ] || echo "::error::$*"; 
 
 fail=0
 # Se construye cada overlay de cargas de trabajo ($KUSTOMIZE_DIR/<overlay>) y, una sola vez, el directorio de las
-# Application de Argo CD ($ARGOCD_DIR, una por ambiente); las políticas leen todo desde RENDER_DIR.
+# Application de Argo CD ($ARGOCD_DIR, la del ambiente dev); las políticas leen todo desde RENDER_DIR.
 targets=()
 for overlay in ${OVERLAYS//,/ }; do
   targets+=("$KUSTOMIZE_DIR/$overlay|$overlay")
 done
-targets+=("$ARGOCD_DIR|argocd" "${ARGOCD_DIR}-local|argocd-local")
+targets+=("$ARGOCD_DIR|argocd")
 for target in "${targets[@]}"; do
   rel="${target%%|*}"; name="${target##*|}"
   dir="$ROOT/$rel"
@@ -47,7 +47,7 @@ for target in "${targets[@]}"; do
   kubeconform -strict -summary -schema-location default -schema-location "$CRD_SCHEMAS" "$out" || fail=1
 done
 
-# La Application raíz (root.yaml) vive junto a las de ambiente pero no entra en el kustomization: la crea Terraform y no
+# La Application raíz (root.yaml) vive junto a la de dev pero no entra en el kustomization: la crea Terraform y no
 # se gestiona a sí misma. Se valida aparte; si aparece también en la salida de $ARGOCD_DIR hay un bucle de autogestión.
 root="$ROOT/$ARGOCD_DIR/root.yaml"
 if [ ! -f "$root" ]; then
@@ -56,20 +56,18 @@ if [ ! -f "$root" ]; then
 else
   cp "$root" "$RENDER_DIR/argocd-root.yaml"
   root_name="$(yq eval '.metadata.name' "$root")"
-  for rendered in argocd argocd-local; do
-    if [ -f "$RENDER_DIR/$rendered.yaml" ] \
-      && [ -n "$(yq eval --no-doc "select(.kind == \"Application\" and .metadata.name == \"$root_name\") | .metadata.name" \
-        "$RENDER_DIR/$rendered.yaml")" ]; then
-      fail_msg "la salida de '$rendered' incluye la Application raíz '$root_name': quítala (se gestionaría a sí misma)"
-      fail=1
-    fi
-  done
-  # La raíz debe sincronizar un directorio que este script construye (si no, apuntaría a algo sin validar o inexistente).
+  if [ -f "$RENDER_DIR/argocd.yaml" ] \
+    && [ -n "$(yq eval --no-doc "select(.kind == \"Application\" and .metadata.name == \"$root_name\") | .metadata.name" \
+      "$RENDER_DIR/argocd.yaml")" ]; then
+    fail_msg "la salida de 'argocd' incluye la Application raíz '$root_name': quítala (se gestionaría a sí misma)"
+    fail=1
+  fi
+  # La raíz debe sincronizar el directorio que este script construye (si no, apuntaría a algo sin validar o inexistente).
   root_path="$(yq eval '.spec.source.path' "$root")"
-  case "$root_path" in
-    "$ARGOCD_DIR" | "${ARGOCD_DIR}-local") ;;
-    *) fail_msg "root.yaml sincroniza '$root_path', que no es '$ARGOCD_DIR' ni '${ARGOCD_DIR}-local'"; fail=1 ;;
-  esac
+  if [ "$root_path" != "$ARGOCD_DIR" ]; then
+    fail_msg "root.yaml sincroniza '$root_path', que no es '$ARGOCD_DIR'"
+    fail=1
+  fi
   log "kubeconform: $ARGOCD_DIR/root.yaml"
   kubeconform -strict -summary -schema-location default -schema-location "$CRD_SCHEMAS" "$RENDER_DIR/argocd-root.yaml" \
     || fail=1

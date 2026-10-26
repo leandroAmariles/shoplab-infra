@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Prueba de humo: apply completo sobre Floci, espera a que la Application raíz y la de dev de Argo CD estén Synced y
-# Healthy (y a que la raíz haya creado las de staging y prod) y destruye. El destroy y la limpieza se ejecutan siempre (trap), incluso si algo falla o se cancela.
+# Prueba de humo: apply completo sobre Floci, espera a que la Application raíz de Argo CD esté Synced y Healthy y a que
+# haya creado la de dev, y destruye. El destroy y la limpieza se ejecutan siempre (trap), incluso si algo falla o se cancela.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 command -v kubectl >/dev/null || die "kubectl no está instalado"
@@ -95,9 +95,9 @@ if [ -n "${SMOKE_ROOT_REVISION:-}" ]; then
     -p "{\"spec\":{\"source\":{\"targetRevision\":\"$SMOKE_ROOT_REVISION\"}}}"
 fi
 
-# La raíz crea una Application por ambiente. Un runner de CI no puede dejarlas Healthy: el k3s de Floci no trae
-# StorageClass (los PVC de Postgres y Ollama quedan Pending, ver docs/kustomize.md) y staging/prod piden más recursos.
-# Se exige la raíz Synced/Healthy y que cree las de ambiente; la convergencia completa se prueba en local.
+# La raíz crea la Application de dev. Un runner de CI no puede dejarla Healthy: el k3s de Floci no trae
+# StorageClass (los PVC de Postgres y Ollama quedan Pending, ver docs/kustomize.md).
+# Se exige la raíz Synced/Healthy y que cree la de dev; la convergencia completa se prueba en local.
 log "esperando a Argo CD: Synced + Healthy [${ARGOCD_READY_APPS//,/ }] y creadas [${ARGOCD_PRESENT_APPS//,/ }], máximo ${ARGOCD_TIMEOUT}s"
 deadline=$((SECONDS + ARGOCD_TIMEOUT))
 while :; do

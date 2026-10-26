@@ -1,8 +1,6 @@
-# Application de cada ambiente que gestiona la raíz (root.yaml). root.yaml NO se lista aquí: la raíz no se gestiona a
-# sí misma (la crea Terraform) y listarla provocaría un bucle de autogestión con prune activo.
+# Application del único ambiente (dev) que gestiona la raíz (root.yaml). root.yaml NO se lista aquí: la raíz no se
+# gestiona a sí misma (la crea Terraform) y listarla provocaría un bucle de autogestión con prune activo.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - application-dev.yaml
-  - application-staging.yaml
-  - application-prod.yaml
