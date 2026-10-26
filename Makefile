@@ -4,7 +4,7 @@
 include versions.env
 
 .PHONY: up down bootstrap test test-integration scan \
-	check check-tools fmt-check validate lint pins tf-test kustomize policies test-policies prom-rules trivy plan smoke
+	check check-tools fmt-check validate lint pins tf-test kustomize policies test-policies prom-rules test-ci-scripts trivy plan smoke
 
 bootstrap:
 	@bash scripts/bootstrap.sh
@@ -26,7 +26,7 @@ scan:
 	@bash scripts/scan.sh
 
 # --- Controles del pipeline (job `static` y `trivy` de .github/workflows/ci.yml) ---
-check: check-tools fmt-check validate lint pins tf-test kustomize policies test-policies prom-rules trivy
+check: check-tools fmt-check validate lint pins tf-test kustomize policies test-policies prom-rules test-ci-scripts trivy
 
 check-tools:
 	@bash scripts/check-tools.sh
@@ -54,6 +54,10 @@ policies: kustomize
 
 test-policies:
 	@bash scripts/tests/policy-check.test.sh
+
+# Decisión de omitir la prueba de humo en el commit automático de despliegue de dev (sin emulador ni herramientas extra).
+test-ci-scripts:
+	@bash scripts/tests/dev-deploy-only.test.sh
 
 # Reglas de alerta del backend (LAB-102): promtool check + test rules sobre la PrometheusRule renderizada.
 prom-rules: kustomize

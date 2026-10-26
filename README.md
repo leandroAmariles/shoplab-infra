@@ -16,11 +16,11 @@ Cada pull request y cada push a `main` ejecutan `.github/workflows/ci.yml`. La l
 
 | Job | Qué hace | Equivalente local |
 | --- | --- | --- |
-| `static` | `terraform fmt -check`, `validate`, TFLint, estructura/pines y `terraform test` de cada módulo | `make fmt-check validate lint pins tf-test` |
+| `static` | `terraform fmt -check`, `validate`, TFLint, estructura/pines y `terraform test` de cada módulo, y las pruebas de los scripts de CI | `make fmt-check validate lint pins tf-test test-ci-scripts` |
 | `kustomize` | `kustomize build` de `k8s/overlays/dev`, `kubeconform -strict` y políticas de manifiestos (ver abajo) | `make kustomize policies test-policies` |
 | `trivy` | Trivy config sobre `terraform/` (y, en `kustomize`, sobre los manifiestos renderizados); falla con HIGH/CRITICAL no exceptuados y sube el SARIF a Security | `make trivy` |
 | `plan` | `terraform plan` contra un Floci efímero; lo publica como un único comentario del PR (se actualiza en cada push) | `make plan` (requiere Docker) |
-| `smoke` | `terraform apply` sobre Floci, apunta la raíz a la revisión de la PR, espera a que `shoplab-root` esté `Synced` y `Healthy` y a que cree `shoplab-dev`, y destruye | `make smoke` (requiere Docker) |
+| `smoke` | `terraform apply` sobre Floci, apunta la raíz a la revisión de la PR, espera a que `shoplab-root` esté `Synced` y `Healthy` y a que cree `shoplab-dev`, y destruye. **No corre** en el push automático de despliegue de LAB-81 (`chore(dev): [LAB-81] despliega <sha> a dev`), que solo cambia los `newTag` de `k8s/overlays/dev/kustomization.yaml` (`scripts/is-dev-deploy-only.sh`); cualquier otro cambio, o un rango desconocido, sí lo ejecuta | `make smoke` (requiere Docker) |
 | `ci-gate` | Resume el resultado: falla si algún job falló o se canceló; los omitidos no bloquean | — |
 
 Checks requeridos del ruleset de `main` (`.github/rulesets/main-protection.json`): `ci-gate` y `pr-title`.

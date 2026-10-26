@@ -25,8 +25,12 @@ jobs:
       pull-requests: read
     outputs:
       terraform: ${{ github.event_name != 'pull_request' || steps.filter.outputs.terraform == 'true' || steps.filter.outputs.ci == 'true' }}
+      smoke: ${{ steps.smoke.outputs.run }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The smoke decision diffs the pushed range (before..after), so it needs the history.
+          fetch-depth: 0
       - uses: dorny/paths-filter@v4
         id: filter
         if: github.event_name == 'pull_request'
@@ -43,6 +47,22 @@ jobs:
               - 'Makefile'
             ci:
               - '.github/workflows/ci.yml'
+      # The LAB-81 deploy commit (`chore(dev): [LAB-81] despliega <sha> a dev`) only bumps image tags in the dev overlay:
+      # a full apply against Floci proves nothing new for it (~13 min), so smoke is skipped for that push only. Any other
+      # change in the pushed range, or an unknown range, keeps running it (see scripts/is-dev-deploy-only.sh).
+      - name: Decide whether smoke is needed
+        id: smoke
+        env:
+          TERRAFORM_CHANGED: ${{ github.event_name != 'pull_request' || steps.filter.outputs.terraform == 'true' || steps.filter.outputs.ci == 'true' }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ] && bash scripts/is-dev-deploy-only.sh "$BEFORE" "$AFTER"; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Push only bumps the dev image tags: smoke skipped"
+          else
+            echo "run=$TERRAFORM_CHANGED" >> "$GITHUB_OUTPUT"
+          fi
 
   static:
     needs: changes
@@ -76,6 +96,8 @@ jobs:
         run: make pins
       - name: Terraform tests
         run: make tf-test
+      - name: CI script tests
+        run: make test-ci-scripts
 
   kustomize:
     needs: changes
@@ -220,7 +242,7 @@ jobs:
 
   smoke:
     needs: changes
-    if: needs.changes.outputs.terraform == 'true'
+    if: needs.changes.outputs.smoke == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
