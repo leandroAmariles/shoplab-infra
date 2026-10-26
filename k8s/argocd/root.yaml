@@ -1,7 +1,8 @@
-# Application raíz (app-of-apps): sincroniza este directorio (k8s/argocd), cuyo kustomization.yaml lista las
-# Application de cada ambiente. La crea Terraform al arrancar el entorno leyendo este mismo archivo
-# (terraform/envs/local/main.tf), así git es la única fuente de verdad. NO se lista en kustomization.yaml: la raíz no
-# se gestiona a sí misma. Cambiar este archivo exige `terraform apply`; el resto cambia solo con git.
+# Application raíz (app-of-apps) del clúster local: sincroniza k8s/argocd-local, que parte de las Application de
+# k8s/argocd y deja solo dev (el nodo de Floci no tiene CPU para más de un ambiente). La crea Terraform al arrancar el
+# entorno leyendo este mismo archivo (terraform/envs/local/main.tf), así git es la única fuente de verdad. NO la
+# sincroniza ningún kustomization: la raíz no se gestiona a sí misma. Cambiar este archivo exige `terraform apply`; el
+# resto cambia solo con git. Un clúster real apuntaría su raíz a k8s/argocd (los tres ambientes).
 # Las políticas de CI exigen targetRevision: main, un repoURL sin el placeholder y el finalizer.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -15,7 +16,7 @@ spec:
   source:
     repoURL: https://github.com/leandroAmariles/shoplab-infra
     targetRevision: main
-    path: k8s/argocd
+    path: k8s/argocd-local
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

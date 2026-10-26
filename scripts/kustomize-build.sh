@@ -25,7 +25,7 @@ targets=()
 for overlay in ${OVERLAYS//,/ }; do
   targets+=("$KUSTOMIZE_DIR/$overlay|$overlay")
 done
-targets+=("$ARGOCD_DIR|argocd")
+targets+=("$ARGOCD_DIR|argocd" "${ARGOCD_DIR}-local|argocd-local")
 for target in "${targets[@]}"; do
   rel="${target%%|*}"; name="${target##*|}"
   dir="$ROOT/$rel"
@@ -56,12 +56,20 @@ if [ ! -f "$root" ]; then
 else
   cp "$root" "$RENDER_DIR/argocd-root.yaml"
   root_name="$(yq eval '.metadata.name' "$root")"
-  if [ -f "$RENDER_DIR/argocd.yaml" ] \
-    && [ -n "$(yq eval --no-doc "select(.kind == \"Application\" and .metadata.name == \"$root_name\") | .metadata.name" \
-      "$RENDER_DIR/argocd.yaml")" ]; then
-    fail_msg "'$ARGOCD_DIR/kustomization.yaml' incluye la Application raíz '$root_name': quítala (se gestionaría a sí misma)"
-    fail=1
-  fi
+  for rendered in argocd argocd-local; do
+    if [ -f "$RENDER_DIR/$rendered.yaml" ] \
+      && [ -n "$(yq eval --no-doc "select(.kind == \"Application\" and .metadata.name == \"$root_name\") | .metadata.name" \
+        "$RENDER_DIR/$rendered.yaml")" ]; then
+      fail_msg "la salida de '$rendered' incluye la Application raíz '$root_name': quítala (se gestionaría a sí misma)"
+      fail=1
+    fi
+  done
+  # La raíz debe sincronizar un directorio que este script construye (si no, apuntaría a algo sin validar o inexistente).
+  root_path="$(yq eval '.spec.source.path' "$root")"
+  case "$root_path" in
+    "$ARGOCD_DIR" | "${ARGOCD_DIR}-local") ;;
+    *) fail_msg "root.yaml sincroniza '$root_path', que no es '$ARGOCD_DIR' ni '${ARGOCD_DIR}-local'"; fail=1 ;;
+  esac
   log "kubeconform: $ARGOCD_DIR/root.yaml"
   kubeconform -strict -summary -schema-location default -schema-location "$CRD_SCHEMAS" "$RENDER_DIR/argocd-root.yaml" \
     || fail=1
