@@ -85,6 +85,14 @@ El mismo `port-forward` sirve el ingress de la aplicación (`shoplab.localtest.m
 3. Observa: `kubectl -n argocd get application shoplab-dev -w` pasa a `OutOfSync` y vuelve a `Synced`.
 4. Para revertir, usa `git revert` del commit de fusión y fusiona esa PR: Argo CD vuelve al estado anterior.
 
+### Despliegue continuo a `dev` y su rollback
+
+Cada merge a `main` de `shoplab-helpdesk` fija en `k8s/overlays/dev/kustomization.yaml` el tag del SHA publicado, con un
+commit del bot `shoplab-deploy[bot]` (LAB-81); no edites esas líneas a mano. Para volver atrás, revierte ese commit
+mediante una PR. El flujo, la credencial y el procedimiento completo están en
+[`despliegue-continuo.md`](https://github.com/leandroAmariles/shoplab-helpdesk/blob/main/docs/despliegue-continuo.md)
+del repositorio de la aplicación.
+
 ### Añadir o quitar un ambiente o una `Application`
 
 - Añadir: crea `k8s/argocd/application-<nombre>.yaml` (copia una existente) y lístalo en

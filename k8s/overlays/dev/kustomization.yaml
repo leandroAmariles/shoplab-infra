@@ -1,54 +1,53 @@
+# Desde LAB-81 el despliegue continuo (job deploy de shoplab-helpdesk) fija en `images:` el `newTag` con el SHA completo
+# de cada merge a main; no se edita a mano. Para volver atrás, revierte el commit de despliegue. Nunca latest.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: shoplab-dev
 resources:
-  - ../../base
-  - namespace.yaml
-  - hpa.yaml
+- ../../base
+- namespace.yaml
+- hpa.yaml
 labels:
-  - pairs:
-      app.kubernetes.io/environment: dev
+- pairs:
+    app.kubernetes.io/environment: dev
 images:
-  # Digest de la imagen construida desde main (e11f73d). Los tags vX.Y.Z aún no existen en GHCR; cuando se publiquen
-  # (LAB-78) se promueve cada ambiente con newTag. Nunca latest.
-  - name: ghcr.io/leandroamariles/backend
-    digest: sha256:0566c4464e4819549acdf6be9f538703197ac7ea7dbcd01e481fadafa3b5614d
-  - name: ghcr.io/leandroamariles/frontend
-    digest: sha256:277b6289ef14fbe341cfff55e71604892add02c1c097dc6f2b2ec922753efd62
-  - name: ghcr.io/leandroamariles/ingest
-    digest: sha256:573339322d509d42ea804051bb206b85e2864e57b7806428712c50af3aa92e4b
+- digest: sha256:0566c4464e4819549acdf6be9f538703197ac7ea7dbcd01e481fadafa3b5614d
+  name: ghcr.io/leandroamariles/backend
+- digest: sha256:277b6289ef14fbe341cfff55e71604892add02c1c097dc6f2b2ec922753efd62
+  name: ghcr.io/leandroamariles/frontend
+- digest: sha256:573339322d509d42ea804051bb206b85e2864e57b7806428712c50af3aa92e4b
+  name: ghcr.io/leandroamariles/ingest
 configMapGenerator:
-  - name: backend-config
-    behavior: merge
-    literals:
-      - LOGGING_LEVEL_ROOT=DEBUG
+- behavior: merge
+  literals:
+  - LOGGING_LEVEL_ROOT=DEBUG
+  name: backend-config
 patches:
-  - path: patches/resources.yaml
-  - target:
-      kind: Ingress
-      name: shoplab
-    patch: |-
-      - op: replace
-        path: /spec/rules/0/host
-        value: shoplab.localtest.me
-  - target:
-      kind: StatefulSet
-      name: postgres
-    patch: |-
-      - op: replace
-        path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
-        value: 5Gi
-  - target:
-      kind: StatefulSet
-      name: ollama
-    patch: |-
-      - op: replace
-        path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
-        value: 10Gi
-  # Cada ambiente lee solo sus propias claves de Secrets Manager.
-  - target:
-      kind: ExternalSecret
-    patch: |-
-      - op: replace
-        path: /spec/data/0/remoteRef/key
-        value: /shoplab/dev/postgres-password
+- path: patches/resources.yaml
+- patch: |-
+    - op: replace
+      path: /spec/rules/0/host
+      value: shoplab.localtest.me
+  target:
+    kind: Ingress
+    name: shoplab
+- patch: |-
+    - op: replace
+      path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
+      value: 5Gi
+  target:
+    kind: StatefulSet
+    name: postgres
+- patch: |-
+    - op: replace
+      path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
+      value: 10Gi
+  target:
+    kind: StatefulSet
+    name: ollama
+- patch: |-
+    - op: replace
+      path: /spec/data/0/remoteRef/key
+      value: /shoplab/dev/postgres-password
+  target:
+    kind: ExternalSecret
