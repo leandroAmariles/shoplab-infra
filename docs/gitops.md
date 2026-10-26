@@ -12,8 +12,8 @@ Argo CD despliega se describen en [`kustomize.md`](kustomize.md) y el entorno lo
 rama → PR → CI (kustomize, kubeconform, políticas) → fusión a main → Argo CD detecta main → el clúster converge
 ```
 
-1. Cambia el manifiesto en una rama (por ejemplo `k8s/overlays/staging/`) y abre una PR.
-2. El CI valida cada overlay y cada `Application`: construye con `kustomize build`, valida el esquema y aplica las
+1. Cambia el manifiesto en una rama (por ejemplo `k8s/overlays/dev/`) y abre una PR.
+2. El CI valida el overlay `dev` y la `Application`: construye con `kustomize build`, valida el esquema y aplica las
    políticas (sin `:latest`, sin `Secret` en claro, `repoURL` real, `targetRevision: main` y finalizer).
 3. Al fusionar en `main`, Argo CD lo detecta en el siguiente sondeo (unos 3 minutos) y sincroniza solo.
 4. Verifica: `kubectl -n argocd get applications` debe mostrar `Synced` y `Healthy`.
@@ -24,22 +24,18 @@ No hay ningún comando de despliegue: el clúster refleja `main`.
 
 ```text
 Terraform ── instala ──▶ Argo CD (+ su ingress) ── crea ──▶ Application shoplab-root
-                                                              └─ sincroniza k8s/argocd-local (solo dev)
+                                                              └─ sincroniza k8s/argocd
                                                                    └─ shoplab-dev → k8s/overlays/dev (ns shoplab-dev)
-
-k8s/argocd (los tres ambientes; es lo que sincronizaría una raíz de un clúster real)
-   ├─ shoplab-dev      → k8s/overlays/dev      (ns shoplab-dev)
-   ├─ shoplab-staging  → k8s/overlays/staging  (ns shoplab-staging)
-   └─ shoplab-prod     → k8s/overlays/prod     (ns shoplab-prod)
 ```
 
-En local solo se despliega `dev`: el nodo de k3s de Floci tiene unos 2 CPU y los tres ambientes juntos dejaban decenas
-de pods `Pending` por falta de CPU. `staging` y `prod` siguen definidos y se validan en CI, listos para un clúster real.
+Hay un único ambiente, `dev`: el nodo de k3s de Floci tiene unos 2 CPU y no cabe más de uno. La decisión y cómo añadir
+otro ambiente si hiciera falta están en el ADR-0008 del repositorio `shoplab-helpdesk`
+(`docs/adr/0008-un-solo-ambiente-dev.md`).
 
 | Lo gestiona | Qué | Dónde cambia |
 | --- | --- | --- |
 | Terraform (plataforma) | Floci, clúster, secretos en Secrets Manager, ingress-nginx, External Secrets, monitorización, Argo CD y la `Application` raíz `shoplab-root` | `terraform/` y `k8s/argocd/root.yaml`; se aplica con `make up` / `terraform apply` |
-| Argo CD (aplicaciones) | Backend, frontend, ingest, Postgres y Ollama de cada ambiente, y las `Application` de ambiente | `k8s/overlays/` y `k8s/argocd/`; se aplica fusionando en `main` |
+| Argo CD (aplicaciones) | Backend, frontend, ingest, Postgres y Ollama de `dev`, y su `Application` | `k8s/overlays/` y `k8s/argocd/`; se aplica fusionando en `main` |
 
 Regla práctica: si es un componente de la plataforma, va por Terraform; si es una aplicación de ShopLab, va por git.
 La raíz es lo único de `k8s/argocd/` que cambia por Terraform: no se gestiona a sí misma y no figura en
@@ -50,20 +46,18 @@ La raíz es lo único de `k8s/argocd/` que cambia por Terraform: no se gestiona 
 | Archivo | Función |
 | --- | --- |
 | `root.yaml` | `Application` raíz (app-of-apps). Terraform la lee y la crea al arrancar |
-| `kustomization.yaml` | Lista las `Application` de los tres ambientes |
-| `application-dev.yaml`, `application-staging.yaml`, `application-prod.yaml` | Una `Application` por ambiente, apuntando a su overlay |
+| `kustomization.yaml` | Lista la `Application` de `dev` |
+| `application-dev.yaml` | La `Application` de `dev`, apuntando a `k8s/overlays/dev` |
 
-`k8s/argocd-local/kustomization.yaml` parte de `k8s/argocd` y retira las `Application` de `staging` y `prod`; es lo que
-sincroniza la raíz del clúster local (`root.yaml`, `spec.source.path`). Para desplegar otro ambiente en local, quita su
-parche `$patch: delete` de ese archivo.
+La raíz sincroniza este directorio (`root.yaml`, `spec.source.path: k8s/argocd`).
 
-Todas llevan sincronización automática con `prune` y `selfHeal`, `repoURL` real, `targetRevision: main` y el finalizer
+Toda `Application` lleva sincronización automática con `prune` y `selfHeal`, `repoURL` real, `targetRevision: main` y el finalizer
 `resources-finalizer.argocd.argoproj.io` (retira los recursos al borrar la `Application`).
 
 ## Acceso a Argo CD
 
 ```bash
-export KUBECONFIG=terraform/envs/local/kubeconfig.yaml
+export KUBECONFIG=terraform/envs/dev/kubeconfig.yaml
 kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 8080:80
 ```
 
@@ -95,11 +89,25 @@ del repositorio de la aplicación.
 
 ### Añadir o quitar un ambiente o una `Application`
 
-- Añadir: crea `k8s/argocd/application-<nombre>.yaml` (copia una existente) y lístalo en
-  `k8s/argocd/kustomization.yaml`. En local, además, no debe tener un parche `$patch: delete` en
-  `k8s/argocd-local/kustomization.yaml`. Aparece en Argo CD tras fusionar.
-- Quitar: borra la línea de `kustomization.yaml` y el archivo (o añade el parche de borrado en `argocd-local`). La raíz
-  elimina la `Application` y, por el finalizer, también sus recursos.
+- Añadir un ambiente: sigue los pasos del ADR-0008 (overlay sobre `base/`, `k8s/argocd/application-<nombre>.yaml`
+  listada en `k8s/argocd/kustomization.yaml`, `OVERLAYS` en `versions.env` y, si necesita clúster propio, otro entorno
+  raíz de Terraform). Aparece en Argo CD tras fusionar. Recuerda que el nodo local solo tiene CPU para uno.
+- Quitar: borra la línea de `kustomization.yaml` y el archivo. La raíz elimina la `Application` y, por el finalizer,
+  también sus recursos.
+
+### Si alguna vez se sincronizaron `staging` o `prod`
+
+Hasta LAB-101 el repositorio definía también `staging` y `prod` (en local nunca se desplegaron). Si un clúster llegó a
+tenerlos, al fusionar esta consolidación la raíz elimina sus `Application` (finalizer y `prune`). Si quedara algo
+huérfano, límpialo a mano:
+
+```bash
+kubectl -n argocd delete application shoplab-staging shoplab-prod --ignore-not-found
+kubectl delete namespace shoplab-staging shoplab-prod --ignore-not-found
+```
+
+Las claves `/shoplab/staging/...` y `/shoplab/prod/...` de Secrets Manager solo existen si se crearon con la variable
+`app_environments`, que ya no existe; bórralas con la CLI de AWS si las hubiera.
 
 ### Cambiar la `Application` raíz
 
@@ -115,9 +123,9 @@ kubectl -n argocd describe application shoplab-dev
 
 | Estado | Causa habitual | Qué hacer |
 | --- | --- | --- |
-| `OutOfSync` que no converge | El overlay no construye o apunta a algo inexistente | Revisa la condición `ComparisonError` en `describe`; reproduce con `kustomize build k8s/overlays/<ambiente>` |
-| `Synced` pero `Degraded` | Un pod no arranca o falta un secreto | `kubectl -n shoplab-<ambiente> get pods,externalsecret`; un `ExternalSecret` en error indica que falta la clave `/shoplab/<ambiente>/...` en Secrets Manager (no se muestran valores) |
-| `Progressing` mucho tiempo | Descarga de imágenes o de modelos de Ollama | Espera; revisa `kubectl -n shoplab-<ambiente> describe pod` |
+| `OutOfSync` que no converge | El overlay no construye o apunta a algo inexistente | Revisa la condición `ComparisonError` en `describe`; reproduce con `kustomize build k8s/overlays/dev` |
+| `Synced` pero `Degraded` | Un pod no arranca o falta un secreto | `kubectl -n shoplab-dev get pods,externalsecret`; un `ExternalSecret` en error indica que falta la clave `/shoplab/dev/...` en Secrets Manager (no se muestran valores) |
+| `Progressing` mucho tiempo | Descarga de imágenes o de modelos de Ollama | Espera; revisa `kubectl -n shoplab-dev describe pod` |
 | `Application` ausente | La raíz aún no sincroniza o falta en `kustomization.yaml` | `kubectl -n argocd describe application shoplab-root` |
 
 ## Advertencias
@@ -128,7 +136,7 @@ kubectl -n argocd describe application shoplab-dev
   (ver [`kustomize.md`](kustomize.md)); el repositorio se lee sin credenciales porque es público.
 - **El CI rechaza** un `repoURL` de plantilla (`CAMBIA-ESTE-OWNER`), un `targetRevision` distinto de `main`, una
   `Application` sin finalizer y una raíz listada en `k8s/argocd/kustomization.yaml`.
-- **Local:** la raíz despliega solo `dev` (CPU del nodo de Floci). El k3s de Floci tampoco trae `StorageClass`, así que
+- **Local:** el único ambiente es `dev` (CPU del nodo de Floci). El k3s de Floci tampoco trae `StorageClass`, así que
   los PVC de Postgres y Ollama quedan `Pending` y `dev` no llega a `Healthy` hasta que haya una (ver
   [`kustomize.md`](kustomize.md)).
 - **Prueba de humo del CI:** exige `shoplab-root` `Synced` y `Healthy` y que cree `shoplab-dev`; no exige que `dev`

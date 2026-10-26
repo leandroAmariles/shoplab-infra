@@ -30,7 +30,7 @@ No hace falta ninguna credencial de AWS: las que usa el proveedor son ficticias 
 1. Crea el archivo de valores de secretos (no se versiona):
 
    ```bash
-   cp terraform/envs/local/secrets.auto.tfvars.example terraform/envs/local/secrets.auto.tfvars
+   cp terraform/envs/dev/secrets.auto.tfvars.example terraform/envs/dev/secrets.auto.tfvars
    # edita los valores; también puedes usar la variable de entorno TF_VAR_secrets
    ```
 
@@ -47,7 +47,7 @@ No hace falta ninguna credencial de AWS: las que usa el proveedor son ficticias 
 3. Usa el clúster:
 
    ```bash
-   export KUBECONFIG=terraform/envs/local/kubeconfig.yaml
+   export KUBECONFIG=terraform/envs/dev/kubeconfig.yaml
    kubectl get pods -A
    kubectl -n argocd get applications
    ```
@@ -60,7 +60,7 @@ No hace falta ninguna credencial de AWS: las que usa el proveedor son ficticias 
    ```
 
    Abre `http://argocd.localtest.me:8080` con el usuario `admin` (`*.localtest.me` resuelve a 127.0.0.1). Argo CD
-   sincroniza `shoplab-root` y, a través de ella, un ambiente por `Application`; el flujo completo está en
+   sincroniza `shoplab-root` y, a través de ella, la `Application` de `dev`; el flujo completo está en
    [`gitops.md`](gitops.md).
 
 5. Borra todo:
@@ -78,9 +78,9 @@ No hace falta ninguna credencial de AWS: las que usa el proveedor son ficticias 
   `TF_VAR_secrets`. Si faltan, `make up` se detiene antes de levantar nada y explica qué hacer.
 - Los secretos se crean en Secrets Manager con el prefijo `/shoplab/<ambiente>/` y los parámetros en SSM.
 - El entorno incluye un `ExternalSecret` de demostración en el namespace `demo` que copia
-  `/shoplab/local/postgres-password` a un `Secret` del clúster.
+  `/shoplab/dev/postgres-password` a un `Secret` del clúster.
 - El estado remoto contiene los valores en claro: vive solo en el emulador local. `make scan` busca credenciales
-  en el historial y en los cambios en staging (gitleaks vía Docker).
+  en el historial y en los cambios del área de preparación de git (gitleaks vía Docker).
 
 ## Versiones
 
@@ -89,7 +89,7 @@ de cada raíz se versiona e incluye hashes para Windows, Linux y macOS. Para act
 `versions.tf` o en `variables.tf` correspondiente, ejecuta `terraform init -upgrade` y vuelve a generar los hashes:
 
 ```bash
-terraform -chdir=terraform/envs/local providers lock \
+terraform -chdir=terraform/envs/dev providers lock \
   -platform=windows_amd64 -platform=linux_amd64 -platform=darwin_arm64 -platform=darwin_amd64
 ```
 
@@ -103,10 +103,24 @@ make test-integration   # aplica un ambiente completo contra Floci con terraform
 make scan               # busca credenciales
 ```
 
-## Varios ambientes
+## Un solo ambiente
 
-Cada ambiente tiene su raíz en `terraform/envs/<ambiente>`, su bucket (`shoplab-tfstate-<ambiente>`) y su clave de
-estado (`<ambiente>/terraform.tfstate`). El script usa la variable `ENV` (por defecto `local`).
+Hay un único entorno raíz, `terraform/envs/dev`, con su bucket (`shoplab-tfstate-dev`) y su clave de estado
+(`dev/terraform.tfstate`). Los scripts usan la variable `ENV` (por defecto `dev`); solo se cambia para pruebas, como el
+ambiente `itest` de `make test-integration`. Para añadir otro ambiente, ver el ADR-0008 del repositorio
+`shoplab-helpdesk` (`docs/adr/0008-un-solo-ambiente-dev.md`).
+
+### Pasar desde el entorno `local` anterior
+
+Hasta LAB-101 el entorno raíz se llamaba `local` (clúster `shoplab-local`, bucket `shoplab-tfstate-local`). El cambio de
+nombre no se migra: el estado vive en un Floci desechable. Si tenías ese entorno levantado:
+
+1. Antes de actualizar el repositorio, destrúyelo con la versión anterior: `make down` (o, si no responde,
+   `docker compose down -v --remove-orphans`). Termina con `bash scripts/verify-clean.sh`.
+2. Actualiza el repositorio. Copia `secrets.auto.tfvars` de `terraform/envs/local/` a `terraform/envs/dev/` (el archivo está
+   ignorado por git y `git pull` no lo mueve; si falta, créalo desde `secrets.auto.tfvars.example`).
+3. Levanta de nuevo con `make up`. Se pierden los datos del clúster anterior (Postgres y modelos de Ollama), igual que
+   con cualquier `make down`.
 
 ## Modo de respaldo con kind
 
@@ -124,7 +138,7 @@ En este modo no se crea ningún clúster EKS emulado. En modo por defecto (`floc
 | Síntoma | Causa y solución |
 | --- | --- |
 | `Floci no responde en http://localhost:4566` | El contenedor no arrancó o el puerto 4566 está ocupado por otro emulador. Revisa `docker ps` y detén el otro proceso. |
-| `Error acquiring the state lock` | Hay otra operación sobre el mismo estado. Espera a que termine. Si quedó huérfano tras un fallo: `terraform -chdir=terraform/envs/local force-unlock <ID>` con el ID que muestra el error. |
+| `Error acquiring the state lock` | Hay otra operación sobre el mismo estado. Espera a que termine. Si quedó huérfano tras un fallo: `terraform -chdir=terraform/envs/dev force-unlock <ID>` con el ID que muestra el error. |
 | Floci se reinició y perdió su contenido | El estado remoto referencia recursos que ya no existen. Ejecuta `make down` (limpia contenedores aunque Floci no responda) y vuelve a `make up`. |
 | `make down` falla a medias | Es reintentable: vuelve a ejecutarlo; el error indica el recurso que falló. |
 | Pods de External Secrets no llegan a Floci | Los pods de k3s no resuelven nombres de contenedor ni `host.docker.internal`; el entorno usa la IP de Floci en la red de compose (`scripts/floci-ip.sh`). |

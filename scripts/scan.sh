@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Busca credenciales en el historial y en los cambios en staging con gitleaks (vía Docker, sin instalar nada).
+# Busca credenciales en el historial y en los cambios del área de preparación de git con gitleaks (vía Docker, sin instalar nada).
 # Los archivos ignorados por git (kubeconfig.yaml, secrets.auto.tfvars) no se escanean: no pueden llegar al repositorio.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
@@ -12,6 +12,6 @@ run_gitleaks() {
 
 log "escaneando el historial"
 run_gitleaks git /repo
-log "escaneando los cambios en staging"
+log "escaneando los cambios del área de preparación de git"
 run_gitleaks git /repo --staged
 log "sin credenciales"

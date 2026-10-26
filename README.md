@@ -3,7 +3,7 @@
 Infraestructura como código de ShopLab Helpdesk (LAB-98): Terraform contra un AWS emulado en local (Floci)
 con un EKS local, ingress-nginx, External Secrets Operator, Argo CD y kube-prometheus-stack.
 
-- Código: `terraform/` (módulos `state`, `eks`, `secrets`, `platform` y un entorno raíz por ambiente en `envs/`)
+- Código: `terraform/` (módulos `state`, `eks`, `secrets`, `platform` y un único entorno raíz, `envs/dev`)
 - Guía: `docs/terraform-local.md`
 - Especificación: `specs/LAB-98-terraform-floci-eks/` en el repositorio `shoplab-helpdesk`
 
@@ -17,7 +17,7 @@ Cada pull request y cada push a `main` ejecutan `.github/workflows/ci.yml`. La l
 | Job | Qué hace | Equivalente local |
 | --- | --- | --- |
 | `static` | `terraform fmt -check`, `validate`, TFLint, estructura/pines y `terraform test` de cada módulo | `make fmt-check validate lint pins tf-test` |
-| `kustomize` | `kustomize build` de `k8s/overlays/{dev,staging,prod}`, `kubeconform -strict` y políticas de manifiestos (ver abajo) | `make kustomize policies test-policies` |
+| `kustomize` | `kustomize build` de `k8s/overlays/dev`, `kubeconform -strict` y políticas de manifiestos (ver abajo) | `make kustomize policies test-policies` |
 | `trivy` | Trivy config sobre `terraform/` (y, en `kustomize`, sobre los manifiestos renderizados); falla con HIGH/CRITICAL no exceptuados y sube el SARIF a Security | `make trivy` |
 | `plan` | `terraform plan` contra un Floci efímero; lo publica como un único comentario del PR (se actualiza en cada push) | `make plan` (requiere Docker) |
 | `smoke` | `terraform apply` sobre Floci, apunta la raíz a la revisión de la PR, espera a que `shoplab-root` esté `Synced` y `Healthy` y a que cree `shoplab-dev`, y destruye | `make smoke` (requiere Docker) |
@@ -44,12 +44,13 @@ imagen de Floci, actualiza también `.tflint.hcl` y `docker-compose.yml`: el scr
 
 ### Overlays y políticas de manifiestos
 
-`k8s/base` describe backend, frontend, ingest, Postgres con pgvector, Ollama e ingress; cada overlay de
-`k8s/overlays/` (`dev`, `staging`, `prod`) fija namespace, imágenes, recursos, HPA y configuración, y
-`k8s/argocd/` contiene la `Application` raíz (`root.yaml`, la crea Terraform) y una `Application` por ambiente;
-`k8s/argocd-local/` selecciona solo `dev` para el clúster local y es lo que sincroniza la raíz (ver [docs/kustomize.md](docs/kustomize.md) y [docs/gitops.md](docs/gitops.md)). Al añadir un overlay hay
-que listarlo en `OVERLAYS` de `versions.env`. `scripts/policy-check.sh` revisa la salida
-renderizada (overlays y Applications) y falla con una línea `regla | overlay | recurso | valor` por violación:
+`k8s/base` describe backend, frontend, ingest, Postgres con pgvector, Ollama e ingress; el overlay
+`k8s/overlays/dev` fija namespace, imágenes, recursos, HPA y configuración del único ambiente, y
+`k8s/argocd/` contiene la `Application` raíz (`root.yaml`, la crea Terraform) y la de `dev`, que es lo que sincroniza la
+raíz (ver [docs/kustomize.md](docs/kustomize.md) y [docs/gitops.md](docs/gitops.md)). Hay un solo ambiente; para
+añadir otro, el ADR-0008 de `shoplab-helpdesk` lista los pasos, entre ellos listar el overlay en `OVERLAYS` de
+`versions.env`. `scripts/policy-check.sh` revisa la salida
+renderizada (overlay y Applications) y falla con una línea `regla | overlay | recurso | valor` por violación:
 
 | Regla | Falla si |
 | --- | --- |

@@ -1,7 +1,7 @@
 mock_provider "aws" {}
 
 variables {
-  environment = "local"
+  environment = "dev"
   secrets = {
     postgres-password = "valor-de-prueba-1"
     llm-api-key       = "valor-de-prueba-2"
@@ -15,12 +15,12 @@ run "creates_secrets_and_parameters_under_environment_prefix" {
   command = plan
 
   assert {
-    condition     = contains(output.secret_names, "/shoplab/local/postgres-password")
+    condition     = contains(output.secret_names, "/shoplab/dev/postgres-password")
     error_message = "Los secretos deben crearse bajo /shoplab/<ambiente>/"
   }
 
   assert {
-    condition     = contains(output.parameter_names, "/shoplab/local/llm-model")
+    condition     = contains(output.parameter_names, "/shoplab/dev/llm-model")
     error_message = "Los parámetros deben crearse bajo /shoplab/<ambiente>/"
   }
 }
