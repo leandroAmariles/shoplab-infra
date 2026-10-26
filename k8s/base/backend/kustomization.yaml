@@ -4,6 +4,8 @@ resources:
   - deployment.yaml
   - service.yaml
   - externalsecret.yaml
+  - servicemonitor.yaml
+  - prometheusrule.yaml
 configMapGenerator:
   - name: backend-config
     literals:

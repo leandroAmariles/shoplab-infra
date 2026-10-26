@@ -1,0 +1,18 @@
+# Prometheus recoge las métricas del backend (LAB-102). Selecciona el Service `backend` por su etiqueta y usa el puerto
+# con nombre `http`; genera un objetivo por réplica y el `job` resultante es `backend`. Prometheus lo descubre sin
+# editar su configuración porque monitoring.tf abre serviceMonitorSelectorNilUsesHelmValues. /actuator/prometheus no
+# sale por el ingress (solo publica /api y /): se recoge por la red interna del clúster.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: backend
+  labels:
+    app.kubernetes.io/name: backend
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backend
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s

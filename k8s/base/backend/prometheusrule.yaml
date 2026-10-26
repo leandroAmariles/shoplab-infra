@@ -1,0 +1,29 @@
+# Alerta de ejemplo «backend caído» (LAB-102): valida el circuito métrica -> regla -> Alertmanager. Prometheus la carga
+# sin editar su configuración (monitoring.tf abre ruleSelectorNilUsesHelmValues). `up == 0` cubre un backend que no
+# responde; `absent(...)` cubre el caso en que la serie desaparece (0 réplicas o Deployment borrado), en el que `up == 0`
+# nunca se cumpliría. Con recogida y evaluación de 30 s y `for: 2m` salta en ~3 min; un despliegue progresivo no la
+# dispara porque el pod antiguo sigue siendo objetivo hasta que el nuevo está listo. Se prueba con
+# rules-tests/backend-down.test.yaml (make prom-rules); el namespace del selector es el del único ambiente (dev).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: backend
+  labels:
+    app.kubernetes.io/name: backend
+spec:
+  groups:
+    - name: backend
+      rules:
+        - alert: BackendDown
+          expr: |
+            up{job="backend", namespace="shoplab-dev"} == 0
+            or
+            absent(up{job="backend", namespace="shoplab-dev"})
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: El backend de ShopLab no responde
+            description: >-
+              Prometheus no recoge métricas del backend en shoplab-dev desde hace más de 2 minutos.
+              Revisa los pods del backend y el dashboard «ShopLab · Pods».

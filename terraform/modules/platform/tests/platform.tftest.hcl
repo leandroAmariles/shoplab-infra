@@ -243,3 +243,39 @@ run "rejects_an_argocd_host_outside_localtest_me" {
 
   expect_failures = [var.argocd_host]
 }
+
+run "enables_alertmanager_with_minimal_resources" {
+  command = plan
+
+  assert {
+    condition     = yamldecode(helm_release.kube_prometheus_stack.values[0]).alertmanager.enabled == true
+    error_message = "Alertmanager debe estar activo: la alerta BackendDown (LAB-102) llega a él"
+  }
+
+  assert {
+    condition = (
+      yamldecode(helm_release.kube_prometheus_stack.values[0]).alertmanager.alertmanagerSpec.resources.requests.cpu == "10m" &&
+      yamldecode(helm_release.kube_prometheus_stack.values[0]).alertmanager.alertmanagerSpec.resources.requests.memory == "32Mi"
+    )
+    error_message = "Alertmanager debe pedir solo 10m de CPU y 32Mi de memoria (el k3s local tiene ~2 CPU)"
+  }
+
+  assert {
+    condition     = !can(yamldecode(helm_release.kube_prometheus_stack.values[0]).alertmanager.alertmanagerSpec.storage)
+    error_message = "Alertmanager no debe pedir almacenamiento: el k3s de Floci no trae StorageClass"
+  }
+}
+
+run "selects_every_service_monitor_and_rule" {
+  command = plan
+
+  assert {
+    condition     = yamldecode(helm_release.kube_prometheus_stack.values[0]).prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues == false
+    error_message = "Prometheus debe seleccionar todos los ServiceMonitor, no solo los del release de Helm"
+  }
+
+  assert {
+    condition     = yamldecode(helm_release.kube_prometheus_stack.values[0]).prometheus.prometheusSpec.ruleSelectorNilUsesHelmValues == false
+    error_message = "Prometheus debe seleccionar todas las PrometheusRule, no solo las del release de Helm"
+  }
+}

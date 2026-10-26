@@ -1,0 +1,94 @@
+# Pruebas de la alerta BackendDown (LAB-102). scripts/prom-rules.sh extrae la regla de la PrometheusRule renderizada a
+# rules.yaml, junto a una copia de este archivo, y ejecuta `promtool test rules`. Intervalo de recogida: 30 s; la
+# alerta pasa a firing tras `for: 2m` (promtool solo informa de las alertas en firing, no de las pendientes).
+rule_files:
+  - rules.yaml
+
+evaluation_interval: 30s
+
+tests:
+  - name: backend con up == 0 sostenido dispara la alerta
+    interval: 30s
+    input_series:
+      - series: 'up{job="backend",namespace="shoplab-dev",instance="10.42.0.10:8080"}'
+        values: '0x12'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: BackendDown
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: BackendDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: backend
+              namespace: shoplab-dev
+              instance: 10.42.0.10:8080
+            exp_annotations:
+              summary: El backend de ShopLab no responde
+              description: >-
+                Prometheus no recoge métricas del backend en shoplab-dev desde hace más de 2 minutos.
+                Revisa los pods del backend y el dashboard «ShopLab · Pods».
+
+  - name: sin ninguna serie up (0 réplicas) dispara la alerta
+    interval: 30s
+    input_series:
+      - series: 'up{job="otro",namespace="shoplab-dev",instance="10.42.0.99:9100"}'
+        values: '1x12'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: BackendDown
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: BackendDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: backend
+              namespace: shoplab-dev
+            exp_annotations:
+              summary: El backend de ShopLab no responde
+              description: >-
+                Prometheus no recoge métricas del backend en shoplab-dev desde hace más de 2 minutos.
+                Revisa los pods del backend y el dashboard «ShopLab · Pods».
+
+  - name: un corte breve (menos de 2 minutos) no dispara la alerta
+    interval: 30s
+    input_series:
+      - series: 'up{job="backend",namespace="shoplab-dev",instance="10.42.0.10:8080"}'
+        values: '0 0 1 1 1 1 1 1 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: BackendDown
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: BackendDown
+        exp_alerts: []
+
+  - name: backend sano no dispara la alerta
+    interval: 30s
+    input_series:
+      - series: 'up{job="backend",namespace="shoplab-dev",instance="10.42.0.10:8080"}'
+        values: '1x12'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: BackendDown
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: BackendDown
+        exp_alerts: []
+
+  - name: un backend caído en otro namespace no dispara la alerta de shoplab-dev
+    interval: 30s
+    input_series:
+      - series: 'up{job="backend",namespace="shoplab-dev",instance="10.42.0.10:8080"}'
+        values: '1x12'
+      - series: 'up{job="backend",namespace="otro",instance="10.42.0.20:8080"}'
+        values: '0x12'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: BackendDown
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: BackendDown
+        exp_alerts: []

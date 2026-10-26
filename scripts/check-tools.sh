@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Verifica que las herramientas instaladas coinciden con versions.env. Dice cuál falta y cómo instalarla.
 # ALLOW_TOOL_DRIFT=1 convierte una versión distinta en aviso (solo para uso local).
-# Uso: check-tools.sh [terraform] [tflint] [trivy] [kustomize] [kubeconform] [yq]. Sin argumentos revisa todas (CI revisa solo las que cada job instala).
+# Uso: check-tools.sh [terraform] [tflint] [trivy] [kustomize] [kubeconform] [yq] [promtool]. Sin argumentos revisa todas (CI revisa solo las que cada job instala).
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 # shellcheck disable=SC1091
@@ -29,10 +29,11 @@ have_trivy="$(trivy --version 2>/dev/null | sed -nE '1s/^Version: ([0-9.]+).*/\1
 have_kustomize="$(kustomize version 2>/dev/null | sed -nE '1s/^v?([0-9.]+).*/\1/p' || true)"
 have_kubeconform="$(kubeconform -v 2>/dev/null | sed -nE '1s/^v?([0-9.]+).*/\1/p' || true)"
 have_yq="$(yq --version 2>/dev/null | sed -nE '1s/.* version v?([0-9.]+).*/\1/p' || true)"
+have_promtool="$(promtool --version 2>/dev/null | sed -nE '1s/^promtool, version ([0-9.]+).*/\1/p' || true)"
 
 wanted() { local t; for t in "${TOOLS[@]}"; do [ "$t" = "$1" ] && return 0; done; return 1; }
 TOOLS=("$@")
-if [ "${#TOOLS[@]}" -eq 0 ]; then TOOLS=(terraform tflint trivy kustomize kubeconform yq); fi
+if [ "${#TOOLS[@]}" -eq 0 ]; then TOOLS=(terraform tflint trivy kustomize kubeconform yq promtool); fi
 
 wanted terraform && check terraform "$TERRAFORM_VERSION" "$have_terraform" "https://developer.hashicorp.com/terraform/install"
 wanted tflint && check tflint "$TFLINT_VERSION" "$have_tflint" "https://github.com/terraform-linters/tflint/releases/tag/v$TFLINT_VERSION"
@@ -40,6 +41,7 @@ wanted trivy && check trivy "$TRIVY_VERSION" "$have_trivy" "https://github.com/a
 wanted kustomize && check kustomize "$KUSTOMIZE_VERSION" "$have_kustomize" "https://github.com/kubernetes-sigs/kustomize/releases/tag/kustomize%2Fv$KUSTOMIZE_VERSION"
 wanted kubeconform && check kubeconform "$KUBECONFORM_VERSION" "$have_kubeconform" "https://github.com/yannh/kubeconform/releases/tag/v$KUBECONFORM_VERSION"
 wanted yq && check yq "$YQ_VERSION" "$have_yq" "https://github.com/mikefarah/yq/releases/tag/v$YQ_VERSION"
+wanted promtool && check promtool "$PROMTOOL_VERSION" "$have_promtool" "https://github.com/prometheus/prometheus/releases/tag/v$PROMTOOL_VERSION"
 
 # El plugin de TFLint y la imagen de Floci deben ser los mismos que en .tflint.hcl y docker-compose.yml.
 grep -q "version = \"$TFLINT_AWS_RULESET_VERSION\"" "$ROOT/.tflint.hcl" \

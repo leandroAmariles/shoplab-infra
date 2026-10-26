@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Instala en el runner (Linux amd64) kustomize, kubeconform y yq a las versiones de versions.env, verificando el
-# sha256 contra el archivo de sumas que publica cada proyecto. Uso: ci-install-tools.sh [kustomize] [kubeconform] [yq]
+# Instala en el runner (Linux amd64) kustomize, kubeconform, yq y promtool a las versiones de versions.env, verificando el
+# sha256 contra el archivo de sumas que publica cada proyecto. Uso: ci-install-tools.sh [kustomize] [kubeconform] [yq] [promtool]
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 # shellcheck disable=SC1091
@@ -33,8 +33,14 @@ install_yq() {
   verify "$tmp/$f" "$(sed -nE "s/^SHA256 \($f\) = ([0-9a-f]+)\$/\1/p" "$tmp/yq.sums")"
   install -m 0755 "$tmp/$f" "$BIN/yq"
 }
+install_promtool() {
+  local d="prometheus-${PROMTOOL_VERSION}.linux-amd64" base="https://github.com/prometheus/prometheus/releases/download/v${PROMTOOL_VERSION}"
+  fetch "$base/$d.tar.gz" "$tmp/$d.tar.gz"; fetch "$base/sha256sums.txt" "$tmp/promtool.sums"
+  verify "$tmp/$d.tar.gz" "$(awk -v f="$d.tar.gz" '$2 == f {print $1}' "$tmp/promtool.sums")"
+  tar -xzf "$tmp/$d.tar.gz" -C "$BIN" --strip-components=1 "$d/promtool"
+}
 
-TOOLS=("$@"); [ "${#TOOLS[@]}" -gt 0 ] || TOOLS=(kustomize kubeconform yq)
+TOOLS=("$@"); [ "${#TOOLS[@]}" -gt 0 ] || TOOLS=(kustomize kubeconform yq promtool)
 for t in "${TOOLS[@]}"; do
   log "instalando $t"
   "install_$t"
