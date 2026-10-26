@@ -30,9 +30,9 @@ fi
 existing="$(gh api "repos/$REPO/rulesets" --jq ".[] | select(.name==\"$NAME\") | .id" || true)"
 if [ -n "$existing" ]; then
   log "actualizando el ruleset '$NAME' ($existing)"
-  gh api -X PUT "repos/$REPO/rulesets/$existing" --input "$PAYLOAD" >/dev/null
+  gh api -X PUT "repos/$REPO/rulesets/$existing" --input - >/dev/null < "$PAYLOAD"
 else
   log "creando el ruleset '$NAME'"
-  gh api -X POST "repos/$REPO/rulesets" --input "$PAYLOAD" >/dev/null
+  gh api -X POST "repos/$REPO/rulesets" --input - >/dev/null < "$PAYLOAD"
 fi
 log "listo"
