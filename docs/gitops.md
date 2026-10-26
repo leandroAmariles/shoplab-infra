@@ -25,7 +25,8 @@ No hay ningún comando de despliegue: el clúster refleja `main`.
 ```text
 Terraform ── instala ──▶ Argo CD (+ su ingress) ── crea ──▶ Application shoplab-root
                                                               └─ sincroniza k8s/argocd
-                                                                   └─ shoplab-dev → k8s/overlays/dev (ns shoplab-dev)
+                                                                   ├─ shoplab-dev → k8s/overlays/dev (ns shoplab-dev)
+                                                                   └─ shoplab-observability → infra/observability de shoplab-helpdesk (ns monitoring)
 ```
 
 Hay un único ambiente, `dev`: el nodo de k3s de Floci tiene unos 2 CPU y no cabe más de uno. La decisión y cómo añadir
@@ -46,8 +47,9 @@ La raíz es lo único de `k8s/argocd/` que cambia por Terraform: no se gestiona 
 | Archivo | Función |
 | --- | --- |
 | `root.yaml` | `Application` raíz (app-of-apps). Terraform la lee y la crea al arrancar |
-| `kustomization.yaml` | Lista la `Application` de `dev` |
+| `kustomization.yaml` | Lista las `Application` de `dev` y de los dashboards |
 | `application-dev.yaml` | La `Application` de `dev`, apuntando a `k8s/overlays/dev` |
+| `application-observability.yaml` | Dashboards de Grafana: lee `infra/observability` de `shoplab-helpdesk` (ver [`observability.md`](observability.md)) |
 
 La raíz sincroniza este directorio (`root.yaml`, `spec.source.path: k8s/argocd`).
 

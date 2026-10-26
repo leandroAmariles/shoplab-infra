@@ -46,8 +46,9 @@ imagen de Floci, actualiza también `.tflint.hcl` y `docker-compose.yml`: el scr
 
 `k8s/base` describe backend, frontend, ingest, Postgres con pgvector, Ollama e ingress; el overlay
 `k8s/overlays/dev` fija namespace, imágenes, recursos, HPA y configuración del único ambiente, y
-`k8s/argocd/` contiene la `Application` raíz (`root.yaml`, la crea Terraform) y la de `dev`, que es lo que sincroniza la
-raíz (ver [docs/kustomize.md](docs/kustomize.md) y [docs/gitops.md](docs/gitops.md)). Hay un solo ambiente; para
+`k8s/argocd/` contiene la `Application` raíz (`root.yaml`, la crea Terraform), la de `dev` y la de los dashboards de
+Grafana, que es lo que sincroniza la raíz (ver [docs/kustomize.md](docs/kustomize.md), [docs/gitops.md](docs/gitops.md) y
+[docs/observability.md](docs/observability.md)). Hay un solo ambiente; para
 añadir otro, el ADR-0008 de `shoplab-helpdesk` lista los pasos, entre ellos listar el overlay en `OVERLAYS` de
 `versions.env`. `scripts/policy-check.sh` revisa la salida
 renderizada (overlay y Applications) y falla con una línea `regla | overlay | recurso | valor` por violación:
