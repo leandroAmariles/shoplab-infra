@@ -6,6 +6,12 @@ resource "helm_release" "argo_cd" {
   chart            = "argo-cd"
   version          = var.chart_versions.argo_cd
 
+  # Interfaz por el ingress local (ingress-nginx, LAB-98). Tras el ingress se sirve HTTP: el TLS queda fuera de alcance.
+  values = [yamlencode({
+    server  = { ingress = { enabled = true, ingressClassName = "nginx", hostname = var.argocd_host } }
+    configs = { params = { "server.insecure" = true } }
+  })]
+
   # Redis usa un repositorio configurable (por defecto el del chart): ecr-public.aws.com responde 429 a descargas
   # anónimas desde los runners de CI. El tag lo sigue fijando el chart.
   set = [{

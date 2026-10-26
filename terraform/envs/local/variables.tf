@@ -57,9 +57,9 @@ variable "secrets" {
 }
 
 variable "app_environments" {
-  description = "Ambientes de k8s/overlays cuyas claves se crean en Secrets Manager (por ejemplo [\"dev\"])"
+  description = "Ambientes de k8s/overlays cuyas claves se crean en Secrets Manager; la Application raíz de Argo CD despliega los tres, así que por defecto se crean las de todos"
   type        = list(string)
-  default     = []
+  default     = ["dev", "staging", "prod"]
 
   validation {
     condition     = alltrue([for e in var.app_environments : contains(["dev", "staging", "prod"], e)])

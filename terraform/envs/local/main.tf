@@ -12,6 +12,9 @@ locals {
     var.cluster_mode == "floci" ? "http://${data.external.floci_ip[0].result.ip}:4566" :
     "http://host.docker.internal:4566"
   )
+
+  # Application raíz de Argo CD: el manifiesto vive en git (k8s/argocd/root.yaml) y Terraform solo lo crea al arrancar.
+  argocd_root = yamldecode(file("${path.module}/../../../k8s/argocd/root.yaml"))
 }
 
 module "eks" {
@@ -52,6 +55,7 @@ module "platform" {
   region                        = var.region
   secrets_endpoint              = local.cluster_secrets_endpoint
   argocd_redis_image_repository = var.argocd_redis_image_repository
+  argocd_initial_app            = local.argocd_root
 
   depends_on = [module.eks]
 }

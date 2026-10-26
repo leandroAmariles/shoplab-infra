@@ -1,0 +1,30 @@
+# Application de Argo CD que sincroniza el overlay staging desde este repositorio. La gestiona la Application raíz
+# (root.yaml) y se retira del clúster, con sus recursos, al quitarla de kustomization.yaml (finalizer). El namespace de
+# destino lo crea el propio overlay (namespace.yaml), por eso no usa CreateNamespace. Las políticas de CI exigen
+# targetRevision: main, un repoURL sin el placeholder y el finalizer.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: shoplab-staging
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/leandroAmariles/shoplab-infra
+    targetRevision: main
+    path: k8s/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: shoplab-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

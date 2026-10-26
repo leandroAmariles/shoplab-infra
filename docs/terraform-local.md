@@ -52,14 +52,16 @@ No hace falta ninguna credencial de AWS: las que usa el proveedor son ficticias 
    kubectl -n argocd get applications
    ```
 
-4. Entra a Argo CD:
+4. Entra a Argo CD por el ingress:
 
    ```bash
-   kubectl -n argocd port-forward svc/argo-cd-argocd-server 8080:80
+   kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 8080:80
    kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
    ```
 
-   Abre `http://localhost:8080` con el usuario `admin`.
+   Abre `http://argocd.localtest.me:8080` con el usuario `admin` (`*.localtest.me` resuelve a 127.0.0.1). Argo CD
+   sincroniza `shoplab-root` y, a través de ella, un ambiente por `Application`; el flujo completo está en
+   [`gitops.md`](gitops.md).
 
 5. Borra todo:
 

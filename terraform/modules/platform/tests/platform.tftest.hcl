@@ -2,6 +2,31 @@ mock_provider "helm" {}
 mock_provider "kubernetes" {}
 
 variables {
+  argocd_initial_app = {
+    apiVersion = "argoproj.io/v1alpha1"
+    kind       = "Application"
+    metadata = {
+      name       = "shoplab-root"
+      namespace  = "argocd"
+      finalizers = ["resources-finalizer.argocd.argoproj.io"]
+    }
+    spec = {
+      project = "default"
+      source = {
+        repoURL        = "https://github.com/leandroAmariles/shoplab-infra"
+        targetRevision = "main"
+        path           = "k8s/argocd"
+      }
+      destination = {
+        server    = "https://kubernetes.default.svc"
+        namespace = "argocd"
+      }
+      syncPolicy = {
+        automated = { prune = true, selfHeal = true }
+      }
+    }
+  }
+
   chart_versions = {
     ingress_nginx         = "4.15.1"
     external_secrets      = "2.14.0"
@@ -99,4 +124,122 @@ run "rejects_open_range_chart_version" {
   }
 
   expect_failures = [var.chart_versions]
+}
+
+run "creates_the_root_application_from_the_given_manifest" {
+  command = plan
+
+  assert {
+    condition     = yamldecode(helm_release.argocd_initial_app.values[0]).application.metadata.name == "shoplab-root"
+    error_message = "La Application inicial debe ser la raíz recibida"
+  }
+
+  assert {
+    condition     = yamldecode(helm_release.argocd_initial_app.values[0]).application.spec.source.path == "k8s/argocd"
+    error_message = "La raíz debe sincronizar k8s/argocd"
+  }
+
+  assert {
+    condition = (
+      yamldecode(helm_release.argocd_initial_app.values[0]).application.spec.syncPolicy.automated.prune &&
+      yamldecode(helm_release.argocd_initial_app.values[0]).application.spec.syncPolicy.automated.selfHeal
+    )
+    error_message = "La raíz debe sincronizar con prune y selfHeal"
+  }
+
+  assert {
+    condition     = contains(yamldecode(helm_release.argocd_initial_app.values[0]).application.metadata.finalizers, "resources-finalizer.argocd.argoproj.io")
+    error_message = "La raíz debe llevar el finalizer de Argo CD"
+  }
+}
+
+run "rejects_a_template_repo_url_in_the_initial_app" {
+  command = plan
+
+  variables {
+    argocd_initial_app = {
+      kind = "Application"
+      spec = { source = { repoURL = "https://github.com/CAMBIA-ESTE-OWNER/shoplab-infra", targetRevision = "main" } }
+    }
+  }
+
+  expect_failures = [var.argocd_initial_app]
+}
+
+run "rejects_an_initial_app_that_does_not_follow_main" {
+  command = plan
+
+  variables {
+    argocd_initial_app = {
+      kind = "Application"
+      spec = { source = { repoURL = "https://github.com/leandroAmariles/shoplab-infra", targetRevision = "HEAD" } }
+    }
+  }
+
+  expect_failures = [var.argocd_initial_app]
+}
+
+run "rejects_an_initial_app_that_is_not_an_application" {
+  command = plan
+
+  variables {
+    argocd_initial_app = {
+      kind = "Deployment"
+      spec = { source = { repoURL = "https://github.com/leandroAmariles/shoplab-infra", targetRevision = "main" } }
+    }
+  }
+
+  expect_failures = [var.argocd_initial_app]
+}
+
+run "exposes_argocd_through_the_local_ingress" {
+  command = plan
+
+  assert {
+    condition     = yamldecode(helm_release.argo_cd.values[0]).server.ingress.enabled == true
+    error_message = "Argo CD debe publicarse con un ingress"
+  }
+
+  assert {
+    condition     = yamldecode(helm_release.argo_cd.values[0]).server.ingress.ingressClassName == "nginx"
+    error_message = "El ingress de Argo CD debe usar la clase nginx"
+  }
+
+  assert {
+    condition     = yamldecode(helm_release.argo_cd.values[0]).server.ingress.hostname == "argocd.localtest.me"
+    error_message = "El ingress de Argo CD debe usar el host por defecto argocd.localtest.me"
+  }
+
+  assert {
+    condition     = yamldecode(helm_release.argo_cd.values[0]).configs.params["server.insecure"] == true
+    error_message = "Argo CD debe servir HTTP detrás del ingress (server.insecure)"
+  }
+
+  assert {
+    condition     = output.argocd_url == "http://argocd.localtest.me:8080"
+    error_message = "argocd_url debe apuntar al host del ingress"
+  }
+}
+
+run "uses_the_given_argocd_host" {
+  command = plan
+
+  variables {
+    argocd_host = "gitops.localtest.me"
+  }
+
+  assert {
+    condition     = yamldecode(helm_release.argo_cd.values[0]).server.ingress.hostname == "gitops.localtest.me"
+    error_message = "El ingress debe usar el host recibido"
+  }
+}
+
+run "rejects_an_argocd_host_outside_localtest_me" {
+  command = plan
+
+  variables {
+    argocd_host = "argocd.example.com"
+  }
+
+  expect_failures = [var.argocd_host]
 }
