@@ -86,8 +86,18 @@ bash "$ROOT/scripts/up.sh" || {
   bash "$ROOT/scripts/up.sh"
 }
 
-# La raíz crea una Application por ambiente. Un runner de CI no tiene recursos para que staging y prod (más réplicas,
-# HPA) queden Healthy: de esas solo se exige que la raíz las haya creado; la convergencia completa se prueba en local.
+# Argo CD sincroniza git, no el árbol de trabajo: en una PR, k8s/argocd de main aún no tiene los cambios y la raíz no
+# crearía las Application de ambiente. En CI (SMOKE_ROOT_REVISION) se apunta la raíz a la revisión de la PR solo durante
+# esta prueba; root.yaml en git y las políticas siguen exigiendo targetRevision: main. Las hijas siguen en main.
+if [ -n "${SMOKE_ROOT_REVISION:-}" ]; then
+  log "apuntando shoplab-root a la revisión $SMOKE_ROOT_REVISION (solo en esta prueba)"
+  kc -n argocd patch application shoplab-root --type merge \
+    -p "{\"spec\":{\"source\":{\"targetRevision\":\"$SMOKE_ROOT_REVISION\"}}}"
+fi
+
+# La raíz crea una Application por ambiente. Un runner de CI no puede dejarlas Healthy: el k3s de Floci no trae
+# StorageClass (los PVC de Postgres y Ollama quedan Pending, ver docs/kustomize.md) y staging/prod piden más recursos.
+# Se exige la raíz Synced/Healthy y que cree las de ambiente; la convergencia completa se prueba en local.
 log "esperando a Argo CD: Synced + Healthy [${ARGOCD_READY_APPS//,/ }] y creadas [${ARGOCD_PRESENT_APPS//,/ }], máximo ${ARGOCD_TIMEOUT}s"
 deadline=$((SECONDS + ARGOCD_TIMEOUT))
 while :; do

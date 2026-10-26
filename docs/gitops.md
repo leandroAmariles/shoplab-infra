@@ -110,5 +110,9 @@ kubectl -n argocd describe application shoplab-staging
 - **El CI rechaza** un `repoURL` de plantilla (`CAMBIA-ESTE-OWNER`), un `targetRevision` distinto de `main`, una
   `Application` sin finalizer y una raíz listada en `k8s/argocd/kustomization.yaml`.
 - **Local:** la raíz crea los tres ambientes en el mismo clúster, aislados por namespace; necesita memoria para los
-  tres (se recomiendan 16 GB para Docker). La prueba de humo del CI exige que `shoplab-root` y `shoplab-dev` queden
-  `Synced` y `Healthy`, y solo que `shoplab-staging` y `shoplab-prod` existan.
+  tres (se recomiendan 16 GB para Docker). El k3s de Floci no trae `StorageClass`, así que los PVC de Postgres y Ollama
+  quedan `Pending` y un ambiente no llega a `Healthy` hasta que haya una (ver [`kustomize.md`](kustomize.md)).
+- **Prueba de humo del CI:** exige `shoplab-root` `Synced` y `Healthy` y que cree `shoplab-dev`, `shoplab-staging` y
+  `shoplab-prod`; no exige que estas queden `Healthy` por lo anterior. Como Argo CD sincroniza git y la PR aún no está
+  en `main`, el smoke apunta la raíz a la revisión de la PR solo durante la prueba (`SMOKE_ROOT_REVISION`); `root.yaml`
+  y las políticas siguen exigiendo `targetRevision: main`.
