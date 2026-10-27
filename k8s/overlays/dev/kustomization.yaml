@@ -13,13 +13,13 @@ labels:
 images:
 - name: ghcr.io/leandroamariles/backend
   newName: ghcr.io/leandroamariles/backend
-  newTag: v0.6.0
+  newTag: v0.7.0
 - name: ghcr.io/leandroamariles/frontend
   newName: ghcr.io/leandroamariles/frontend
-  newTag: v0.6.0
+  newTag: v0.7.0
 - name: ghcr.io/leandroamariles/ingest
   newName: ghcr.io/leandroamariles/ingest
-  newTag: v0.6.0
+  newTag: v0.7.0
 configMapGenerator:
 - behavior: merge
   literals:
