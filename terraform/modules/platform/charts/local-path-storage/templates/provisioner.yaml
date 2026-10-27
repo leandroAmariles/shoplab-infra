@@ -77,6 +77,12 @@ spec:
         app: local-path-provisioner
     spec:
       serviceAccountName: local-path-provisioner-service-account
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: local-path-provisioner
           image: {{ .Values.provisionerImage | quote }}
@@ -93,6 +99,11 @@ spec:
                   fieldPath: metadata.namespace
             - name: CONFIG_MOUNT_PATH
               value: /etc/config/
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           resources:
             requests:
               cpu: 10m
