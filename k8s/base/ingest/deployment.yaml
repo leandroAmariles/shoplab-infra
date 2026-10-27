@@ -29,8 +29,6 @@ spec:
           envFrom:
             - configMapRef:
                 name: ingest-config
-            - secretRef:
-                name: ingest-credentials
           # La imagen aun no expone un endpoint de salud: se comprueba el puerto hasta que lo tenga.
           readinessProbe:
             tcpSocket:
