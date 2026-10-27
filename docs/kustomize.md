@@ -44,7 +44,7 @@ van por **digest** de la imagen construida desde `main`, porque los tags `vX.Y.Z
 en GHCR. Para obtener el digest de un commit:
 `curl -sI -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.oci.image.index.v1+json" https://ghcr.io/v2/leandroamariles/<servicio>/manifests/<sha-completo>`
 (cabecera `docker-content-digest`; el token anónimo sale de `https://ghcr.io/token?scope=repository:leandroamariles/<servicio>:pull`).
-Cuando se publiquen los tags de versión, el ambiente se promueve con `newTag: vX.Y.Z`. Postgres (`pgvector/pgvector`) y Ollama
+El despliegue continuo fija `newTag: vX.Y.Z` en cada release de `shoplab-helpdesk`. Postgres (`pgvector/pgvector`) y Ollama
 llevan su versión en la base, la misma que `docker-compose.yml` de `shoplab-helpdesk`. Ninguna imagen puede usar
 `latest` ni quedar sin tag: lo comprueba `scripts/policy-check.sh`.
 
