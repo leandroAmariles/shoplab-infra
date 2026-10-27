@@ -81,7 +81,7 @@ El mismo `port-forward` sirve el ingress de la aplicación (`shoplab.localtest.m
 
 ### Despliegue continuo a `dev` y su rollback
 
-Cada merge a `main` de `shoplab-helpdesk` fija en `k8s/overlays/dev/kustomization.yaml` el tag del SHA publicado, con un
+Cada versión publicada (tag `vX.Y.Z`) de `shoplab-helpdesk` fija en `k8s/overlays/dev/kustomization.yaml` ese tag, con un
 commit del bot `shoplab-deploy[bot]` (LAB-81); no edites esas líneas a mano. Para volver atrás, revierte ese commit
 mediante una PR. El flujo, la credencial y el procedimiento completo están en
 [`despliegue-continuo.md`](https://github.com/leandroAmariles/shoplab-helpdesk/blob/main/docs/despliegue-continuo.md)
