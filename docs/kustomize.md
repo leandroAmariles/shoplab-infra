@@ -62,9 +62,11 @@ es `dev`.
 aplicar nada a mano. Solo hay `dev` porque el nodo de k3s de Floci (unos 2 CPU) no tiene CPU para más de un ambiente; el
 flujo completo y cómo entrar a la interfaz están en [`gitops.md`](gitops.md).
 
-El k3s de Floci no trae `StorageClass`, así que los PVC de Postgres y Ollama quedan en `Pending` hasta que el clúster
-tenga una por defecto (en un EKS real se usa la del clúster). En local basta una clase sin provisionador con un PV
-`hostPath` por PVC (5Gi para `data-postgres-0` y 10Gi para `models-ollama-0` en `dev`).
+El k3s de Floci no trae `StorageClass`, así que `make up` instala `local-path-provisioner` (chart local
+`terraform/modules/platform/charts/local-path-storage`) y deja `local-path` como clase por defecto: los PVC de Postgres
+(5Gi) y Ollama (10Gi) se provisionan solos con volúmenes `hostPath` en el nodo desechable, con permisos 0777. En un EKS
+real se usa la clase del clúster. Si cambias ese chart, sube su `version` en `Chart.yaml`: el provider de Helm no
+detecta cambios en un chart local con la misma versión.
 
 ## Construir y validar en local
 

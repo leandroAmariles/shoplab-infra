@@ -1,0 +1,4 @@
+provisionerImage: rancher/local-path-provisioner:v0.0.31
+helperImage: busybox:1.37.0
+# Directorio del nodo donde se crean los volúmenes (el nodo es un contenedor desechable).
+nodePath: /opt/local-path-provisioner

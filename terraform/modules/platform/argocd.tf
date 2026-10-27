@@ -22,9 +22,10 @@ resource "helm_release" "argo_cd" {
   wait    = true
   timeout = 600
 
-  # Último componente: se instala cuando ingress, secretos y monitorización ya están listos.
+  # Último componente: se instala cuando ingress, secretos, almacenamiento y monitorización ya están listos.
   depends_on = [
     helm_release.ingress_nginx,
+    helm_release.local_path_storage,
     helm_release.secret_store,
     helm_release.kube_prometheus_stack,
   ]

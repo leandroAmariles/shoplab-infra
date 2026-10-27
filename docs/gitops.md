@@ -138,9 +138,9 @@ kubectl -n argocd describe application shoplab-dev
   (ver [`kustomize.md`](kustomize.md)); el repositorio se lee sin credenciales porque es público.
 - **El CI rechaza** un `repoURL` de plantilla (`CAMBIA-ESTE-OWNER`), un `targetRevision` distinto de `main`, una
   `Application` sin finalizer y una raíz listada en `k8s/argocd/kustomization.yaml`.
-- **Local:** el único ambiente es `dev` (CPU del nodo de Floci). El k3s de Floci tampoco trae `StorageClass`, así que
-  los PVC de Postgres y Ollama quedan `Pending` y `dev` no llega a `Healthy` hasta que haya una (ver
-  [`kustomize.md`](kustomize.md)).
+- **Local:** el único ambiente es `dev` (CPU del nodo de Floci). El k3s de Floci no trae `StorageClass`: la
+  plataforma instala `local-path-provisioner` y deja `local-path` como clase por defecto, para que los PVC de Postgres
+  y Ollama se enlacen (ver [`kustomize.md`](kustomize.md)).
 - **Prueba de humo del CI:** exige `shoplab-root` `Synced` y `Healthy` y que cree `shoplab-dev`; no exige que `dev`
   quede `Healthy` por lo anterior. Como Argo CD sincroniza git y la PR aún no está en `main`, el smoke apunta la raíz a
   la revisión de la PR solo durante la prueba (`SMOKE_ROOT_REVISION`); `root.yaml` y las políticas siguen exigiendo
