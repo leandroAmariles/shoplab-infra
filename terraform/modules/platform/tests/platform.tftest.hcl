@@ -279,3 +279,12 @@ run "selects_every_service_monitor_and_rule" {
     error_message = "Prometheus debe seleccionar todas las PrometheusRule, no solo las del release de Helm"
   }
 }
+
+run "installs_a_default_storage_class_provisioner" {
+  command = plan
+
+  assert {
+    condition     = helm_release.local_path_storage.namespace == "local-path-storage"
+    error_message = "local-path-provisioner debe vivir en su propio namespace"
+  }
+}
