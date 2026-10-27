@@ -288,3 +288,22 @@ run "installs_a_default_storage_class_provisioner" {
     error_message = "local-path-provisioner debe vivir en su propio namespace"
   }
 }
+
+run "sets_a_fixed_argocd_admin_password_hash" {
+  command = plan
+
+  assert {
+    condition     = strcontains(helm_release.argo_cd.values[0], "\"argocdServerAdminPassword\": \"$2a$10$")
+    error_message = "Argo CD debe recibir el hash bcrypt de la contraseña de admin"
+  }
+}
+
+run "rejects_a_plaintext_argocd_admin_password" {
+  command = plan
+
+  variables {
+    argocd_admin_password_hash = "admin"
+  }
+
+  expect_failures = [var.argocd_admin_password_hash]
+}

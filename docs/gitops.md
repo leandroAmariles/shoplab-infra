@@ -63,12 +63,10 @@ export KUBECONFIG=terraform/envs/dev/kubeconfig.yaml
 kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 8080:80
 ```
 
-Abre `http://argocd.localtest.me:8080` (`*.localtest.me` resuelve a 127.0.0.1). El usuario es `admin`; la contraseña
-inicial se lee del clúster y no se guarda en el repositorio:
-
-```bash
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
-```
+Abre `http://argocd.localtest.me:8080` (`*.localtest.me` resuelve a 127.0.0.1). El usuario es `admin` y la contraseña es `admin`:
+Terraform la fija en cada `make up` con un hash bcrypt (variable `argocd_admin_password_hash` del módulo `platform`). Es
+solo para el laboratorio local, con la interfaz accesible por `port-forward`; para otra contraseña, pasa su hash bcrypt (prefijo `$2a$`)
+en esa variable.
 
 El mismo `port-forward` sirve el ingress de la aplicación (`shoplab.localtest.me:8080` en `dev`).
 

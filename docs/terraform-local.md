@@ -56,7 +56,7 @@ No hace falta ninguna credencial de AWS: las que usa el proveedor son ficticias 
 
    ```bash
    kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 8080:80
-   kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+   # usuario admin, contraseña admin (fijada por Terraform; ver docs/gitops.md)
    ```
 
    Abre `http://argocd.localtest.me:8080` con el usuario `admin` (`*.localtest.me` resuelve a 127.0.0.1). Argo CD
