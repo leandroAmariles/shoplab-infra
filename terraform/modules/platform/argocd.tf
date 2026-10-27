@@ -8,8 +8,15 @@ resource "helm_release" "argo_cd" {
 
   # Interfaz por el ingress local (ingress-nginx, LAB-98). Tras el ingress se sirve HTTP: el TLS queda fuera de alcance.
   values = [yamlencode({
-    server  = { ingress = { enabled = true, ingressClassName = "nginx", hostname = var.argocd_host } }
-    configs = { params = { "server.insecure" = true } }
+    server = { ingress = { enabled = true, ingressClassName = "nginx", hostname = var.argocd_host } }
+    configs = {
+      params = { "server.insecure" = true }
+      # Contraseña fija del laboratorio local (admin): evita leer argocd-initial-admin-secret tras cada `make up`.
+      secret = {
+        argocdServerAdminPassword      = var.argocd_admin_password_hash
+        argocdServerAdminPasswordMtime = "2026-10-27T00:00:00Z"
+      }
+    }
   })]
 
   # Redis usa un repositorio configurable (por defecto el del chart): ecr-public.aws.com responde 429 a descargas

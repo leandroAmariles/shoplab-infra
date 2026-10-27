@@ -68,3 +68,14 @@ variable "argocd_initial_app" {
     error_message = "La Application raíz debe seguir targetRevision: main"
   }
 }
+
+variable "argocd_admin_password_hash" {
+  description = "Hash bcrypt de la contraseña de admin de Argo CD. El valor por defecto es el de la contraseña `admin`: solo para el laboratorio local, nunca para un clúster expuesto"
+  type        = string
+  default     = "$2a$10$bFpF/GGofebR9wGYRL/1Ve6JJy3lE2Vj75racWN5oobrWLa5w9E2q"
+
+  validation {
+    condition     = can(regex("^[$]2[aby][$][0-9]{2}[$].{53}$", var.argocd_admin_password_hash))
+    error_message = "argocd_admin_password_hash debe ser un hash bcrypt (formato $2a$10$...)"
+  }
+}
