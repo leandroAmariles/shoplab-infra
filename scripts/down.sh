@@ -2,6 +2,7 @@
 # Borra todo: terraform destroy del entorno, destroy del bootstrap y limpieza de Floci. Se puede reintentar.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
+bash "$ROOT/scripts/forward.sh" stop
 use_placeholder_secrets_if_missing # terraform destroy exige la variable aunque no use sus valores
 
 # Se destruye con el mismo modo con el que se levantó (lo recuerda up.sh); CLUSTER_MODE lo sobrescribe.

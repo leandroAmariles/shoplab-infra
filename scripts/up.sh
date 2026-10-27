@@ -36,4 +36,7 @@ apply_timeout=()
   -var "environment=$ENV_NAME" -var "emulator_endpoint=$EMULATOR_URL" \
   -var "cluster_mode=$CLUSTER_MODE"
 
+# Sin kubectl o con el puerto ocupado no se falla: el entorno ya está arriba y se puede reintentar con make forward.
+bash "$ROOT/scripts/forward.sh" || log "AVISO: el ingress no quedó expuesto; resuélvelo y ejecuta make forward"
+
 log "listo. kubectl --kubeconfig $ENV_DIR/kubeconfig.yaml get pods -A"

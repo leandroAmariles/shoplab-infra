@@ -11,5 +11,8 @@ services:
     environment:
       FLOCI_HOSTNAME: localhost
       FLOCI_SERVICES_EKS_DEFAULT_IMAGE: rancher/k3s:v1.35.9-k3s1
+      # La consola web (floci-aws-ui) corre en su propio contenedor: con el valor por defecto (localhost) se llama a sí
+      # misma. Se apunta al servicio de compose, que sí resuelve desde la red shoplab-infra_default.
+      FLOCI_SERVICES_UI_ENDPOINT: http://floci:4566
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

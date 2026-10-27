@@ -24,6 +24,7 @@ Thumbs.db
 
 # Modo de cluster recordado por up.sh
 .cluster-mode
+.port-forward.*
 
 # Locks de módulos (los genera terraform test; solo se versionan los de las raíces)
 terraform/modules/*/.terraform.lock.hcl

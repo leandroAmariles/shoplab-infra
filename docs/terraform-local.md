@@ -52,10 +52,11 @@ No hace falta ninguna credencial de AWS: las que usa el proveedor son ficticias 
    kubectl -n argocd get applications
    ```
 
-4. Entra a Argo CD por el ingress:
+4. Entra a Argo CD por el ingress. `make up` deja un `port-forward` en segundo plano (`scripts/forward.sh`) en el puerto
+   8080 (`INGRESS_PORT` lo cambia); `make down` lo detiene y `make forward` lo relanza si lo cerraste o reiniciaste el equipo.
+   Requiere kubectl; si falta o el puerto está ocupado, `make up` avisa y no falla.
 
    ```bash
-   kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 8080:80
    # usuario admin, contraseña admin (fijada por Terraform; ver docs/gitops.md)
    ```
 
