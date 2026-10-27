@@ -1,5 +1,5 @@
-# Desde LAB-81 el despliegue continuo (job deploy de shoplab-helpdesk) fija en `images:` el `newTag` con el SHA completo
-# de cada merge a main; no se edita a mano. Para volver atrás, revierte el commit de despliegue. Nunca latest.
+# Desde LAB-81 el despliegue continuo (job deploy de shoplab-helpdesk) fija en `images:` el `newTag` con la versión
+# vX.Y.Z de cada release (ADR-0012 de shoplab-helpdesk); no se edita a mano. Para volver atrás, revierte el commit de despliegue. Nunca latest.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: shoplab-dev

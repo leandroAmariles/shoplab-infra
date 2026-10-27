@@ -25,6 +25,9 @@ write_overlay "$tag_b" otro-namespace; echo more >> "$tmp/README.md"; c_two="$(c
 echo more >> "$tmp/README.md";                                   c_readme="$(commit 'solo README')"
 write_overlay "$tag_a" otro-namespace;                           c_back="$(commit 'tags otra vez')"
 write_overlay "$tag_b" distinto-namespace;                       c_mixed="$(commit 'tag y namespace en el mismo archivo')"
+write_overlay v0.4.0 distinto-namespace;                         c_ver="$(commit 'de sha a versión')"
+write_overlay v0.4.1 distinto-namespace;                         c_ver2="$(commit 'de versión a versión')"
+write_overlay v0.4.1-rc1 distinto-namespace;                     c_rc="$(commit 'versión con sufijo')"
 
 expect() { # descripción código-esperado antes después
   local desc="$1" want="$2" code
@@ -38,6 +41,9 @@ expect "tags y otro archivo a la vez" 1 "$c_ns" "$c_two"
 expect "solo cambia un archivo ajeno" 1 "$c_two" "$c_readme"
 expect "tags otra vez (otro valor)" 0 "$c_readme" "$c_back"
 expect "tag y namespace en el mismo archivo" 1 "$c_back" "$c_mixed"
+expect "de un sha a una versión vX.Y.Z" 0 "$c_mixed" "$c_ver"
+expect "de una versión a otra" 0 "$c_ver" "$c_ver2"
+expect "versión con sufijo (no es un tag de release)" 1 "$c_ver2" "$c_rc"
 expect "rango de varios commits con un cambio ajeno" 1 "$c0" "$c_two"
 expect "antes vacío" 1 "" "$c_tags"
 expect "antes todo ceros (rama nueva)" 1 0000000000000000000000000000000000000000 "$c_tags"
