@@ -29,13 +29,16 @@ spec:
           envFrom:
             - configMapRef:
                 name: ingest-config
-          # La imagen aun no expone un endpoint de salud: se comprueba el puerto hasta que lo tenga.
+          # El servicio (LAB-20) expone /health sin depender de nada externo. Requiere una imagen de release que ya lo
+          # incluya: con la imagen marcador de posicion anterior la sonda falla.
           readinessProbe:
-            tcpSocket:
+            httpGet:
+              path: /health
               port: http
             periodSeconds: 10
           livenessProbe:
-            tcpSocket:
+            httpGet:
+              path: /health
               port: http
             initialDelaySeconds: 10
             periodSeconds: 20
