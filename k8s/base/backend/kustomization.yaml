@@ -14,4 +14,6 @@ configMapGenerator:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/shoplab
       - SPRING_DATASOURCE_USERNAME=shoplab
       - SPRING_AI_OLLAMA_BASE_URL=http://ollama:11434
+      # El modulo retrieval llama a ingest para trocear los documentos (LAB-20).
+      - SHOPLAB_RETRIEVAL_INGEST_BASE_URL=http://ingest:8000
       - LOGGING_LEVEL_ROOT=INFO

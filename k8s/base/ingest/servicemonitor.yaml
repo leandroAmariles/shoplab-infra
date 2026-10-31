@@ -1,0 +1,18 @@
+# Prometheus recoge las metricas de ingest (LAB-20): contador de peticiones por resultado e histograma de duracion.
+# Selecciona el Service `ingest` por su etiqueta y usa el puerto con nombre `http`; el `job` resultante es `ingest`.
+# Prometheus lo descubre sin editar su configuracion (igual que el ServiceMonitor del backend). /metrics no sale por el
+# ingress: ingest no se publica y se recoge por la red interna del cluster.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ingest
+  labels:
+    app.kubernetes.io/name: ingest
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ingest
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s

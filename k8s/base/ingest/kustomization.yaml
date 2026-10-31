@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - deployment.yaml
   - service.yaml
+  - servicemonitor.yaml
 # ingest no se conecta a Postgres: entrega su salida al modulo retrieval del backend, unico dueno del esquema
 # (LAB-19, ADR-0015). Por eso no lleva ExternalSecret ni variables DATABASE_*.
 configMapGenerator:
