@@ -47,9 +47,11 @@ spec:
             requests:
               cpu: 100m
               memory: 512Mi
+            # El chat (llama3.2:3b) y los embeddings (bge-m3) quedan cargados a la vez desde LAB-22; con la ventana de
+            # 8192 tokens el pico medido fue de 5,3 GiB. Con 4Gi el kernel mata el contenedor (OOMKilled).
             limits:
               cpu: "2"
-              memory: 4Gi
+              memory: 8Gi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
