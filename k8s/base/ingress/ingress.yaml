@@ -5,6 +5,10 @@ metadata:
   name: shoplab
   labels:
     app.kubernetes.io/name: ingress
+  annotations:
+    # Subida de documentos (LAB-25): el backend acepta hasta 10 MiB por documento y el multipart añade cabeceras.
+    # Con el 1m por defecto de ingress-nginx, un PDF mediano recibiría un 413 sin el contrato de errores.
+    nginx.ingress.kubernetes.io/proxy-body-size: "12m"
 spec:
   ingressClassName: nginx
   rules:
