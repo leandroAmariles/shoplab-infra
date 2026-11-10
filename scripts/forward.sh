@@ -53,10 +53,20 @@ wait_http() {
   return 1
 }
 
+# Igual que wait_http, pero para servicios que no hablan HTTP (Postgres): basta con que el puerto acepte la conexión.
+wait_tcp() {
+  for _ in $(seq 1 15); do
+    if (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; then return 0; fi
+    sleep 1
+  done
+  return 1
+}
+
 failed=""
-forward() { # nombre namespace servicio puerto-local puerto-servicio host-para-probar
+forward() { # nombre namespace servicio puerto-local puerto-servicio host-para-probar ("tcp" = sin HTTP)
   start_forward "$2" "$3" "$4:$5"
-  if wait_http "$4" "${6:-localhost}"; then printf -v "st_$1" ok; else printf -v "st_$1" FALLO; failed="$failed $1 ($4)"; fi
+  if [ "${6:-}" = tcp ]; then wait_tcp "$4"; else wait_http "$4" "${6:-localhost}"; fi \
+    && printf -v "st_$1" ok || { printf -v "st_$1" FALLO; failed="$failed $1 ($4)"; }
 }
 
 forward ingress ingress-nginx ingress-nginx-controller "$INGRESS_PORT" 80 argocd.localtest.me
@@ -64,9 +74,11 @@ forward ingress ingress-nginx ingress-nginx-controller "$INGRESS_PORT" 80 argocd
 forward grafana monitoring kube-prometheus-stack-grafana 3000 80
 forward prometheus monitoring kube-prometheus-stack-prometheus 9090 9090
 forward alertmanager monitoring kube-prometheus-stack-alertmanager 9093 9093
+# Postgres del clúster para clientes SQL del host. El 5433 evita el 5432 del Postgres de Docker de shoplab-helpdesk.
+forward postgres shoplab-dev postgres 5433 5432 tcp
 
 mark() { local v="st_$1"; [ "${!v:-}" = ok ] && printf 'ok   ' || printf 'FALLO'; }
-# Floci no pasa por port-forward (compose publica 4566 y Floci publica 4500): solo se comprueba que respondan.
+# Floci no pasa por port-forward (compose publica 4566 y la consola 4500): solo se comprueba que respondan.
 curl -fsS -m 3 "$EMULATOR_URL/_localstack/health" >/dev/null 2>&1 && st_floci=ok || st_floci=FALLO
 curl -s -m 3 -w '%{http_code}' "http://127.0.0.1:4500/" 2>/dev/null | grep -qv 000 && st_console=ok || st_console=FALLO
 cat >&2 <<SUMMARY
@@ -80,6 +92,8 @@ cat >&2 <<SUMMARY
   $(mark alertmanager)  Alertmanager  http://localhost:9093
   $(mark floci)  Floci (API AWS) http://localhost:4566
   $(mark console)  Floci (consola) http://localhost:4500
+  $(mark postgres)  Postgres       localhost:5433  base shoplab, usuario shoplab (jdbc:postgresql://localhost:5433/shoplab)
+                                 contraseña: kubectl --kubeconfig $KUBECONFIG_FILE -n shoplab-dev get secret postgres-credentials -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d
   Detener los túneles: make down (o bash scripts/forward.sh stop). Relanzarlos: make forward
 SUMMARY
 
