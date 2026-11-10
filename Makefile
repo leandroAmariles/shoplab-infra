@@ -3,7 +3,7 @@
 # salen de versions.env, la misma fuente que usa el workflow (LAB-99): `make check` reproduce lo que corre en CI.
 include versions.env
 
-.PHONY: up down forward bootstrap test test-integration scan \
+.PHONY: up down forward seed bootstrap test test-integration scan \
 	check check-tools fmt-check validate lint pins tf-test kustomize policies test-policies prom-rules test-ci-scripts trivy plan smoke
 
 bootstrap:
@@ -19,6 +19,10 @@ down:
 # Expone el ingress en el host (port-forward en segundo plano); make up ya lo hace.
 forward:
 	@bash scripts/forward.sh
+
+# Carga data/kb/*.md de shoplab-helpdesk en la base de conocimiento (POST /api/documents). make down borra la base: repetir tras make up.
+seed:
+	@bash scripts/seed.sh
 
 test:
 	@bash scripts/test.sh
