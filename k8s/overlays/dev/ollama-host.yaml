@@ -24,6 +24,10 @@ ports:
   - name: http
     port: 11434
     protocol: TCP
+# `conditions` explícito: el API server lo rellena con {} y, si el manifiesto no lo trae, Argo CD lo ve como diferencia
+# permanente (OutOfSync).
 endpoints:
   - addresses:
       - 172.17.0.1
+    conditions:
+      ready: true
