@@ -9,6 +9,7 @@ resources:
   - frontend
   - ingest
   - ingress
+  - langfuse
 labels:
   - pairs:
       app.kubernetes.io/part-of: shoplab

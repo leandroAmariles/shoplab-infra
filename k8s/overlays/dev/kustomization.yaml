@@ -26,6 +26,10 @@ configMapGenerator:
 - behavior: merge
   literals:
   - LOGGING_LEVEL_ROOT=DEBUG
+  # Trazas de LLM hacia el Langfuse del clúster (LAB-64); las claves vienen de backend-langfuse.
+  - SHOPLAB_CHAT_TRACING_ENABLED=true
+  - SHOPLAB_CHAT_TRACING_ENDPOINT=http://langfuse-web:3000/api/public/otel
+  - SHOPLAB_CHAT_TRACING_ENVIRONMENT=dev
   name: backend-config
 patches:
 - path: patches/resources.yaml
@@ -101,3 +105,23 @@ patches:
       value: /shoplab/dev/postgres-password
   target:
     kind: ExternalSecret
+    name: backend-credentials
+# Langfuse (LAB-64): los secretos salen de /shoplab/dev/langfuse. `langfuse-credentials` usa dataFrom (sin /spec/data) y
+# `backend-langfuse` lee dos propiedades del mismo JSON.
+- patch: |-
+    - op: replace
+      path: /spec/dataFrom/0/extract/key
+      value: /shoplab/dev/langfuse
+  target:
+    kind: ExternalSecret
+    name: langfuse-credentials
+- patch: |-
+    - op: replace
+      path: /spec/data/0/remoteRef/key
+      value: /shoplab/dev/langfuse
+    - op: replace
+      path: /spec/data/1/remoteRef/key
+      value: /shoplab/dev/langfuse
+  target:
+    kind: ExternalSecret
+    name: backend-langfuse

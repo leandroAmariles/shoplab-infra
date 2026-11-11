@@ -6,7 +6,7 @@ variable "environment" {
 variable "required_secrets" {
   description = "Nombres de secretos que deben recibir valor"
   type        = list(string)
-  default     = ["postgres-password", "llm-api-key"]
+  default     = ["postgres-password", "llm-api-key", "langfuse"]
 }
 
 variable "secrets" {

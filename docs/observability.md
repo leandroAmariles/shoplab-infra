@@ -43,3 +43,53 @@ kubectl -n argocd get applications     # shoplab-root, shoplab-dev y shoplab-obs
 
 Los nombres de los `Service` dependen del release (`kube-prometheus-stack`). Si el backend aparece como caído justo tras
 fusionar, es lo esperado hasta que el despliegue continuo (LAB-81) publique una imagen que ya expone `/actuator/prometheus`.
+
+## Langfuse (LAB-64)
+
+Langfuse guarda una traza por cada turno del chat (pregunta, prompt, fragmentos recuperados con su puntuación, herramientas,
+tokens y coste). En `shoplab-dev` Argo CD despliega seis cargas desde `k8s/base/langfuse/`, todas con versión fija y
+`securityContext` endurecido:
+
+| Carga | Tipo | Imagen | Datos |
+|---|---|---|---|
+| `langfuse-web` (3000) y `langfuse-worker` (3030) | Deployment | `langfuse:4.77.0`, `langfuse-worker:4.77.0` | sin estado |
+| `langfuse-postgres` | StatefulSet | `postgres:17.7` | PVC `local-path` de 2Gi |
+| `langfuse-clickhouse` | StatefulSet | `clickhouse-server:26.3.62.3` | PVC de 5Gi |
+| `langfuse-redis` | StatefulSet | `redis:7.4.6` | PVC de 1Gi |
+| `langfuse-minio` | StatefulSet | `chainguard/minio` por digest | PVC de 2Gi |
+
+Todos los `Service` son `ClusterIP`: **no hay Ingress ni NodePort** (los almacenes nunca se publican). El backend de dev
+envía las trazas a `http://langfuse-web:3000/api/public/otel` (ver `SHOPLAB_CHAT_TRACING_*` en el overlay `dev`) con las
+claves del proyecto, que salen del mismo secreto que usa Langfuse para crearlo.
+
+### Acceso a la interfaz
+
+```bash
+kubectl -n shoplab-dev port-forward svc/langfuse-web 3001:3000
+# http://localhost:3001  (usuario admin@shoplab.local, contraseña = LANGFUSE_INIT_USER_PASSWORD del secreto)
+```
+
+Es el puerto 3001 porque `NEXTAUTH_URL` vale `http://localhost:3001`; con otro puerto local el inicio de sesión falla.
+
+### El secreto `/shoplab/dev/langfuse`
+
+Un solo secreto de Secrets Manager con un JSON de diez claves (Terraform lo crea al ser `langfuse` un secreto requerido de
+`terraform/modules/secrets`). Cada clave se convierte en una clave del Secret `langfuse-credentials`:
+
+| Clave | Uso |
+|---|---|
+| `POSTGRES_PASSWORD`, `CLICKHOUSE_PASSWORD`, `REDIS_AUTH`, `MINIO_ROOT_PASSWORD` | contraseñas de los cuatro almacenes |
+| `SALT`, `NEXTAUTH_SECRET` | secretos de la aplicación |
+| `ENCRYPTION_KEY` | 64 caracteres hexadecimales (`openssl rand -hex 32`) |
+| `LANGFUSE_INIT_PROJECT_PUBLIC_KEY`, `LANGFUSE_INIT_PROJECT_SECRET_KEY` | claves del proyecto (`pk-lf-…`, `sk-lf-…`); también las lee el backend |
+| `LANGFUSE_INIT_USER_PASSWORD` | contraseña del usuario inicial |
+
+Cárgalo desde `terraform/envs/dev/secrets.auto.tfvars` (no versionado; el ejemplo está en
+`secrets.auto.tfvars.example`) como una cadena JSON en la entrada `langfuse`. Evita caracteres especiales en
+`POSTGRES_PASSWORD`: va dentro de la `DATABASE_URL`.
+
+### Qué se conserva
+
+Los datos viven en PVC `local-path` del nodo: sobreviven a reinicios de los pods, **no** a `make down`/`destroy` del clúster.
+Tras `make down && make up` Langfuse vuelve sin pasos manuales (organización, proyecto y claves los crea `LANGFUSE_INIT_*`),
+pero sin las trazas anteriores.

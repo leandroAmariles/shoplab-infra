@@ -31,6 +31,8 @@ spec:
                 name: backend-config
             - secretRef:
                 name: backend-credentials
+            - secretRef:
+                name: backend-langfuse
           startupProbe:
             httpGet:
               path: /actuator/health/liveness

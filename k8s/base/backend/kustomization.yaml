@@ -4,6 +4,7 @@ resources:
   - deployment.yaml
   - service.yaml
   - externalsecret.yaml
+  - externalsecret-langfuse.yaml
   - servicemonitor.yaml
   - prometheusrule.yaml
 configMapGenerator:
