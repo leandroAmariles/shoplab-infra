@@ -11,8 +11,21 @@ services:
     environment:
       FLOCI_HOSTNAME: localhost
       FLOCI_SERVICES_EKS_DEFAULT_IMAGE: rancher/k3s:v1.35.9-k3s1
-      # La consola web (floci-aws-ui) corre en su propio contenedor: con el valor por defecto (localhost) se llama a sí
-      # misma. Se apunta al servicio de compose, que sí resuelve desde la red shoplab-infra_default.
-      FLOCI_SERVICES_UI_ENDPOINT: http://floci:4566
+      # Floci solo levanta su consola como sidecar la primera vez que alguien abre /_floci/ui, y ese contenedor muere con
+      # él: tras cada recreación el puerto 4500 quedaba vacío. Se desactiva y la consola corre como servicio de compose.
+      FLOCI_SERVICES_UI_ENABLED: "false"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+
+  # Consola web de Floci, siempre arriba junto al emulador (http://localhost:4500). Misma imagen que usaría el sidecar.
+  floci-ui:
+    image: floci/floci-ui:0.7.0
+    container_name: shoplab-floci-ui
+    ports:
+      - "4500:4500"
+    environment:
+      # Dentro de la red de compose el emulador se llama "floci"; con localhost la consola se llamaría a sí misma.
+      FLOCI_ENDPOINT: http://floci:4566
+    depends_on:
+      - floci
+    restart: unless-stopped
