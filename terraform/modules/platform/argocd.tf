@@ -11,6 +11,65 @@ resource "helm_release" "argo_cd" {
     server = { ingress = { enabled = true, ingressClassName = "nginx", hostname = var.argocd_host } }
     configs = {
       params = { "server.insecure" = true }
+      cm = {
+        # Argo CD excluye por defecto Endpoints y EndpointSlice, y con eso nunca aplicó los EndpointSlice del overlay dev
+        # (ollama-host y postgres-host, que dirigen los Service al Docker del host): el backend no encontraba Postgres.
+        # Es el valor por defecto del chart (argo-cd 10.x) sin EndpointSlice; Endpoints sigue excluido.
+        "resource.exclusions" = <<-EOT
+          ### Network resources created by the Kubernetes control plane and excluded to reduce the number of watched events and UI clutter
+          - apiGroups:
+            - ''
+            kinds:
+            - Endpoints
+          ### Internal Kubernetes resources excluded reduce the number of watched events
+          - apiGroups:
+            - coordination.k8s.io
+            kinds:
+            - Lease
+          ### Internal Kubernetes Authz/Authn resources excluded reduce the number of watched events
+          - apiGroups:
+            - authentication.k8s.io
+            - authorization.k8s.io
+            kinds:
+            - SelfSubjectReview
+            - TokenReview
+            - LocalSubjectAccessReview
+            - SelfSubjectAccessReview
+            - SelfSubjectRulesReview
+            - SubjectAccessReview
+          ### Intermediate Certificate Request excluded reduce the number of watched events
+          - apiGroups:
+            - certificates.k8s.io
+            kinds:
+            - CertificateSigningRequest
+          - apiGroups:
+            - cert-manager.io
+            kinds:
+            - CertificateRequest
+          ### Cilium internal resources excluded reduce the number of watched events and UI Clutter
+          - apiGroups:
+            - cilium.io
+            kinds:
+            - CiliumIdentity
+            - CiliumEndpoint
+            - CiliumEndpointSlice
+          ### Kyverno intermediate and reporting resources excluded reduce the number of watched events and improve performance
+          - apiGroups:
+            - kyverno.io
+            - reports.kyverno.io
+            - wgpolicyk8s.io
+            kinds:
+            - PolicyReport
+            - ClusterPolicyReport
+            - EphemeralReport
+            - ClusterEphemeralReport
+            - AdmissionReport
+            - ClusterAdmissionReport
+            - BackgroundScanReport
+            - ClusterBackgroundScanReport
+            - UpdateRequest
+        EOT
+      }
       # Contraseña fija del laboratorio local (admin): evita leer argocd-initial-admin-secret tras cada `make up`.
       secret = {
         argocdServerAdminPassword      = var.argocd_admin_password_hash
