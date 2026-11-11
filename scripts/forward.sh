@@ -74,8 +74,19 @@ forward ingress ingress-nginx ingress-nginx-controller "$INGRESS_PORT" 80 argocd
 forward grafana monitoring kube-prometheus-stack-grafana 3000 80
 forward prometheus monitoring kube-prometheus-stack-prometheus 9090 9090
 forward alertmanager monitoring kube-prometheus-stack-alertmanager 9093 9093
-# Postgres del clúster para clientes SQL del host. El 5433 evita el 5432 del Postgres de Docker de shoplab-helpdesk.
-forward postgres shoplab-dev postgres 5433 5432 tcp
+# Postgres para clientes SQL del host. Si el Service `postgres` tiene selector, hay un pod: túnel al 5433 (el 5432 lo
+# ocupa el Postgres de Docker de shoplab-helpdesk). Si no tiene (dev lo sirve desde Docker, ver docs/kustomize.md), no hay
+# pods a los que hacer túnel y basta con comprobar que el Postgres de Docker responda en el 5432.
+pg_selector="$(kc -n shoplab-dev get svc postgres -o jsonpath='{.spec.selector}' 2>/dev/null || echo __sin_service__)"
+if [ -z "$pg_selector" ]; then
+  if wait_tcp 5432; then st_postgres=ok; else st_postgres=FALLO; failed="$failed postgres (5432)"; fi
+  pg_where="localhost:5432 (Docker)  base shoplab, usuario shoplab (jdbc:postgresql://localhost:5432/shoplab)"
+  pg_pass="la de POSTGRES_PASSWORD en shoplab-helpdesk/infra/.env (por defecto change-me-local-only)"
+else
+  forward postgres shoplab-dev postgres 5433 5432 tcp
+  pg_where="localhost:5433  base shoplab, usuario shoplab (jdbc:postgresql://localhost:5433/shoplab)"
+  pg_pass="kubectl --kubeconfig $KUBECONFIG_FILE -n shoplab-dev get secret postgres-credentials -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d"
+fi
 
 mark() { local v="st_$1"; [ "${!v:-}" = ok ] && printf 'ok   ' || printf 'FALLO'; }
 # Floci no pasa por port-forward (compose publica 4566 y la consola 4500): solo se comprueba que respondan.
@@ -92,8 +103,8 @@ cat >&2 <<SUMMARY
   $(mark alertmanager)  Alertmanager  http://localhost:9093
   $(mark floci)  Floci (API AWS) http://localhost:4566
   $(mark console)  Floci (consola) http://localhost:4500
-  $(mark postgres)  Postgres       localhost:5433  base shoplab, usuario shoplab (jdbc:postgresql://localhost:5433/shoplab)
-                                 contraseña: kubectl --kubeconfig $KUBECONFIG_FILE -n shoplab-dev get secret postgres-credentials -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d
+  $(mark postgres)  Postgres       $pg_where
+                                 contraseña: $pg_pass
   Detener los túneles: make down (o bash scripts/forward.sh stop). Relanzarlos: make forward
 SUMMARY
 
