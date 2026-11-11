@@ -30,13 +30,12 @@ las fija. Kafka y los servicios de F4 no están en la base; se añaden como un c
 | HPA backend (mín–máx, CPU) | 1–2, 75% |
 | HPA frontend | 1–2, 75% |
 | HPA ingest | 1–2, 75% |
-| Postgres (PVC) | 5Gi |
+| Postgres | fuera del clúster: Docker del host, volumen propio (ver [Postgres en dev](#postgres-en-dev)) |
 | Ollama | fuera del clúster: Docker del host (ver [Ollama en dev](#ollama-en-dev)) |
 | Host del ingress | `shoplab.localtest.me` |
 | Nivel de log del backend | `DEBUG` |
 
-Los recursos por componente están en `overlays/dev/patches/resources.yaml`. Postgres es de una
-réplica y no escala con HPA. Los Deployments no fijan `replicas`: las gobierna el HPA.
+Los recursos por componente están en `overlays/dev/patches/resources.yaml`. Los Deployments no fijan `replicas`: las gobierna el HPA.
 
 ## Imágenes
 
@@ -64,9 +63,9 @@ aplicar nada a mano. Solo hay `dev` porque el nodo de k3s de Floci (unos 2 CPU) 
 flujo completo y cómo entrar a la interfaz están en [`gitops.md`](gitops.md).
 
 El k3s de Floci no trae `StorageClass`, así que `make up` instala `local-path-provisioner` (chart local
-`terraform/modules/platform/charts/local-path-storage`) y deja `local-path` como clase por defecto: el PVC de Postgres
-(5Gi) se provisiona solo con volúmenes `hostPath` en el nodo desechable, con permisos 0777. En un EKS
-real se usa la clase del clúster. Si cambias ese chart, sube su `version` en `Chart.yaml`: el provider de Helm no
+`terraform/modules/platform/charts/local-path-storage`) y deja `local-path` como clase por defecto: los PVC del clúster
+se provisionan solos con volúmenes `hostPath` en el nodo desechable, con permisos 0777 (en `dev` ya no quedan PVC:
+Postgres y Ollama corren en Docker). En un EKS real se usa la clase del clúster. Si cambias ese chart, sube su `version` en `Chart.yaml`: el provider de Helm no
 detecta cambios en un chart local con la misma versión.
 
 ## Ollama en dev
@@ -85,6 +84,23 @@ El backend y el ingest siguen usando `http://ollama:11434`. `host.docker.interna
 - Si tu Docker usa otro rango, ajusta la dirección del EndpointSlice:
   `docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}'`.
 - Solo aplica a `dev` (máquina del desarrollador); la base conserva el Ollama en el clúster para otros ambientes.
+
+## Postgres en dev
+
+Igual que Ollama, en `dev` Postgres **no corre en el clúster**: lo sirve el contenedor `postgres` de
+`infra/docker-compose.yml` de `shoplab-helpdesk` (pgvector, puerto 5432 del host), con su volumen Docker
+`shoplab_pgdata`. Así los datos (catálogo, pedidos, documentos y embeddings) sobreviven a `make down` y a un clúster
+caído, y el backend arranca con la base que ya tiene. `overlays/dev/postgres-host.yaml` dirige el Service `postgres` a
+`172.17.0.1:5432` y el overlay quita el StatefulSet, sus ConfigMap y su ExternalSecret.
+
+- **La contraseña debe coincidir.** El backend la lee de Secrets Manager (`/shoplab/dev/postgres-password`, cargada por
+  `make up` desde `terraform/envs/dev/secrets.auto.tfvars`). Pon ahí el mismo valor que `POSTGRES_PASSWORD` de
+  `shoplab-helpdesk/infra/.env` (por defecto `change-me-local-only`) y ejecuta `make up` para actualizar el secreto.
+- El Postgres de Docker debe estar arriba antes de que el backend arranque:
+  `docker compose -f infra/docker-compose.yml up -d postgres`.
+- Para conectar desde el host (IntelliJ, psql) usa directamente `localhost:5432`; ya no hay túnel.
+- Las migraciones de Flyway las ejecuta el backend contra esa base: si la versión del backend desplegado es anterior a la
+  que migró el volumen, Flyway puede rechazar el arranque.
 
 ## Construir y validar en local
 

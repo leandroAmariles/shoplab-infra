@@ -1,0 +1,27 @@
+# Postgres de dev corre FUERA del clúster, en el Docker del host (servicio `postgres` de infra/docker-compose.yml de
+# shoplab-helpdesk, imagen pgvector, puerto publicado 5432). Su volumen `shoplab_pgdata` vive en Docker, no en el k3s
+# desechable de Floci: los datos (catálogo, pedidos, documentos y embeddings) sobreviven a make down y a un clúster caído.
+#
+# El Service `postgres` de la base pierde su selector (ver kustomization.yaml) y este EndpointSlice lo dirige al host,
+# de modo que `jdbc:postgresql://postgres:5432/shoplab` sigue funcionando sin tocar el backend.
+#
+# 172.17.0.1 es la puerta de enlace de la red `bridge` de Docker (ver ollama-host.yaml para obtenerla si tu rango difiere).
+# Credenciales: el backend lee la contraseña de Secrets Manager (/shoplab/dev/postgres-password, que make up carga desde
+# terraform/envs/dev/secrets.auto.tfvars). Debe ser LA MISMA que usa el Postgres de Docker (POSTGRES_PASSWORD de
+# shoplab-helpdesk/infra/.env, por defecto change-me-local-only), o el backend no podrá conectar.
+# Requisito: el Postgres de Docker debe estar arriba (docker compose -f infra/docker-compose.yml up -d postgres).
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: postgres-host
+  labels:
+    kubernetes.io/service-name: postgres
+    app.kubernetes.io/name: postgres
+addressType: IPv4
+ports:
+  - name: postgres
+    port: 5432
+    protocol: TCP
+endpoints:
+  - addresses:
+      - 172.17.0.1
