@@ -8,6 +8,7 @@ resources:
 - namespace.yaml
 - hpa.yaml
 - ollama-host.yaml
+- postgres-host.yaml
 labels:
 - pairs:
     app.kubernetes.io/environment: dev
@@ -35,12 +36,38 @@ patches:
   target:
     kind: Ingress
     name: shoplab
+# Postgres corre en el Docker del host (ver postgres-host.yaml), con su volumen propio: los datos sobreviven a make down.
+# Se quitan el StatefulSet, su configuración y su ExternalSecret (el backend tiene el suyo), y el Service `postgres` pasa
+# a no tener selector para que lo sirva el EndpointSlice del host.
 - patch: |-
-    - op: replace
-      path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
-      value: 5Gi
-  target:
+    $patch: delete
+    apiVersion: apps/v1
     kind: StatefulSet
+    metadata:
+      name: postgres
+- patch: |-
+    $patch: delete
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: postgres-config
+- patch: |-
+    $patch: delete
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: postgres-init
+- patch: |-
+    $patch: delete
+    apiVersion: external-secrets.io/v1
+    kind: ExternalSecret
+    metadata:
+      name: postgres-credentials
+- patch: |-
+    - op: remove
+      path: /spec/selector
+  target:
+    kind: Service
     name: postgres
 # Ollama corre en el Docker del host (ver ollama-host.yaml): se quitan el StatefulSet y su configuración, y el Service
 # `ollama` pasa a no tener selector para que lo sirva el EndpointSlice del host.
