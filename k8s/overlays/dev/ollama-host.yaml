@@ -1,0 +1,29 @@
+# Ollama de dev corre FUERA del clúster, en el Docker del host (servicio `ollama` de infra/docker-compose.yml de
+# shoplab-helpdesk, puerto publicado 11434). Dentro del k3s de Floci el pod de Ollama quedaba limitado a 2 CPU, sin GPU y
+# compartiendo nodo con el resto: ~1 token/s y 7 s por embedding. En Docker, con la GPU, son ~180 tokens/s y menos de
+# 0,1 s (mediciones en la descripción del PR).
+#
+# El Service `ollama` de la base pierde su selector (ver kustomization.yaml) y este EndpointSlice lo dirige al host, de modo
+# que `http://ollama:11434` sigue funcionando sin tocar el backend ni el ingest.
+#
+# 172.17.0.1 es la puerta de enlace de la red `bridge` de Docker, a la que está conectado el nodo k3s: desde un pod llega a
+# los puertos que Docker publica en el host. `host.docker.internal` NO resuelve dentro del clúster. Si tu Docker usa otro
+# rango, la dirección se obtiene con:
+#   docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}'
+# Requisito: el Ollama de Docker debe estar arriba (docker compose -f infra/docker-compose.yml up -d ollama) y, para la
+# GPU, con `-f infra/docker-compose.gpu.yml`. Sin él, el backend y el ingest no tienen chat ni embeddings.
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: ollama-host
+  labels:
+    kubernetes.io/service-name: ollama
+    app.kubernetes.io/name: ollama
+addressType: IPv4
+ports:
+  - name: http
+    port: 11434
+    protocol: TCP
+endpoints:
+  - addresses:
+      - 172.17.0.1

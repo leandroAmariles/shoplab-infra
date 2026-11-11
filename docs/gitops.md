@@ -36,7 +36,7 @@ otro ambiente si hiciera falta están en el ADR-0008 del repositorio `shoplab-he
 | Lo gestiona | Qué | Dónde cambia |
 | --- | --- | --- |
 | Terraform (plataforma) | Floci, clúster, secretos en Secrets Manager, ingress-nginx, External Secrets, monitorización, Argo CD y la `Application` raíz `shoplab-root` | `terraform/` y `k8s/argocd/root.yaml`; se aplica con `make up` / `terraform apply` |
-| Argo CD (aplicaciones) | Backend, frontend, ingest, Postgres y Ollama de `dev`, y su `Application` | `k8s/overlays/` y `k8s/argocd/`; se aplica fusionando en `main` |
+| Argo CD (aplicaciones) | Backend, frontend, ingest y Postgres de `dev` (Ollama corre en el Docker del host: [`kustomize.md`](kustomize.md#ollama-en-dev)), y su `Application` | `k8s/overlays/` y `k8s/argocd/`; se aplica fusionando en `main` |
 
 Regla práctica: si es un componente de la plataforma, va por Terraform; si es una aplicación de ShopLab, va por git.
 La raíz es lo único de `k8s/argocd/` que cambia por Terraform: no se gestiona a sí misma y no figura en

@@ -7,6 +7,7 @@ resources:
 - ../../base
 - namespace.yaml
 - hpa.yaml
+- ollama-host.yaml
 labels:
 - pairs:
     app.kubernetes.io/environment: dev
@@ -41,12 +42,31 @@ patches:
   target:
     kind: StatefulSet
     name: postgres
+# Ollama corre en el Docker del host (ver ollama-host.yaml): se quitan el StatefulSet y su configuración, y el Service
+# `ollama` pasa a no tener selector para que lo sirva el EndpointSlice del host.
 - patch: |-
-    - op: replace
-      path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
-      value: 10Gi
-  target:
+    $patch: delete
+    apiVersion: apps/v1
     kind: StatefulSet
+    metadata:
+      name: ollama
+- patch: |-
+    $patch: delete
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: ollama-config
+- patch: |-
+    $patch: delete
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: ollama-entrypoint
+- patch: |-
+    - op: remove
+      path: /spec/selector
+  target:
+    kind: Service
     name: ollama
 - patch: |-
     - op: replace

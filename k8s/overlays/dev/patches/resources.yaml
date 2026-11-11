@@ -66,20 +66,3 @@ spec:
             limits:
               cpu: "1"
               memory: 1Gi
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: ollama
-spec:
-  template:
-    spec:
-      containers:
-        - name: ollama
-          resources:
-            requests:
-              cpu: 500m
-              memory: 4Gi
-            limits:
-              cpu: "2"
-              memory: 8Gi

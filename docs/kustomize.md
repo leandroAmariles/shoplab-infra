@@ -30,12 +30,13 @@ las fija. Kafka y los servicios de F4 no están en la base; se añaden como un c
 | HPA backend (mín–máx, CPU) | 1–2, 75% |
 | HPA frontend | 1–2, 75% |
 | HPA ingest | 1–2, 75% |
-| Postgres / Ollama (PVC) | 5Gi / 10Gi |
+| Postgres (PVC) | 5Gi |
+| Ollama | fuera del clúster: Docker del host (ver [Ollama en dev](#ollama-en-dev)) |
 | Host del ingress | `shoplab.localtest.me` |
 | Nivel de log del backend | `DEBUG` |
 
-Los recursos por componente están en `overlays/dev/patches/resources.yaml`. Postgres y Ollama son de una
-réplica y no escalan con HPA. Los Deployments no fijan `replicas`: las gobierna el HPA.
+Los recursos por componente están en `overlays/dev/patches/resources.yaml`. Postgres es de una
+réplica y no escala con HPA. Los Deployments no fijan `replicas`: las gobierna el HPA.
 
 ## Imágenes
 
@@ -63,10 +64,27 @@ aplicar nada a mano. Solo hay `dev` porque el nodo de k3s de Floci (unos 2 CPU) 
 flujo completo y cómo entrar a la interfaz están en [`gitops.md`](gitops.md).
 
 El k3s de Floci no trae `StorageClass`, así que `make up` instala `local-path-provisioner` (chart local
-`terraform/modules/platform/charts/local-path-storage`) y deja `local-path` como clase por defecto: los PVC de Postgres
-(5Gi) y Ollama (10Gi) se provisionan solos con volúmenes `hostPath` en el nodo desechable, con permisos 0777. En un EKS
+`terraform/modules/platform/charts/local-path-storage`) y deja `local-path` como clase por defecto: el PVC de Postgres
+(5Gi) se provisiona solo con volúmenes `hostPath` en el nodo desechable, con permisos 0777. En un EKS
 real se usa la clase del clúster. Si cambias ese chart, sube su `version` en `Chart.yaml`: el provider de Helm no
 detecta cambios en un chart local con la misma versión.
+
+## Ollama en dev
+
+En `dev` Ollama **no corre en el clúster**: lo sirve el contenedor `ollama` de `infra/docker-compose.yml` de
+`shoplab-helpdesk` (puerto 11434 del host). Dentro del k3s de Floci el pod quedaba limitado a 2 CPU, sin GPU y
+compartiendo nodo, y daba ~1 token/s y 7 s por embedding; en Docker con GPU son ~180 tokens/s y menos de 0,1 s.
+
+El overlay quita el StatefulSet y los ConfigMap de Ollama, deja el Service `ollama` sin selector y lo dirige con un
+EndpointSlice (`overlays/dev/ollama-host.yaml`) a `172.17.0.1:11434`, la puerta de enlace de la red `bridge` de Docker.
+El backend y el ingest siguen usando `http://ollama:11434`. `host.docker.internal` no resuelve dentro del clúster.
+
+- Antes de `make seed` o de usar el chat, el Ollama de Docker debe estar arriba:
+  `docker compose -f infra/docker-compose.yml -f infra/docker-compose.gpu.yml up -d ollama` (sin el segundo `-f`
+  corre en CPU).
+- Si tu Docker usa otro rango, ajusta la dirección del EndpointSlice:
+  `docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}'`.
+- Solo aplica a `dev` (máquina del desarrollador); la base conserva el Ollama en el clúster para otros ambientes.
 
 ## Construir y validar en local
 
