@@ -49,3 +49,106 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
+# Langfuse (LAB-64): valores iniciales conservadores; la medición real (`kubectl top pods`, tarea T064) los ajusta.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: langfuse-web
+spec:
+  template:
+    spec:
+      containers:
+        - name: web
+          resources:
+            requests:
+              cpu: 250m
+              memory: 1Gi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: langfuse-worker
+spec:
+  template:
+    spec:
+      containers:
+        - name: worker
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: "500m"
+              memory: 1Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: langfuse-postgres
+spec:
+  template:
+    spec:
+      containers:
+        - name: postgres
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: "500m"
+              memory: 512Mi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: langfuse-clickhouse
+spec:
+  template:
+    spec:
+      containers:
+        - name: clickhouse
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1536Mi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: langfuse-redis
+spec:
+  template:
+    spec:
+      containers:
+        - name: redis
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: "500m"
+              memory: 256Mi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: langfuse-minio
+spec:
+  template:
+    spec:
+      containers:
+        - name: minio
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: "500m"
+              memory: 512Mi

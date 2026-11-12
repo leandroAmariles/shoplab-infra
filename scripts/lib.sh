@@ -20,7 +20,7 @@ die() { log "ERROR: $*"; exit 1; }
 # Solo se planifica, se valida el despliegue o se destruye: si no hay valores de secretos, valen marcadores obvios.
 use_placeholder_secrets_if_missing() {
   if [ ! -f "$ENV_DIR/secrets.auto.tfvars" ] && [ -z "${TF_VAR_secrets:-}" ]; then
-    export TF_VAR_secrets='{"postgres-password"="CHANGE_ME","llm-api-key"="CHANGE_ME"}'
+    export TF_VAR_secrets='{"postgres-password"="CHANGE_ME","llm-api-key"="CHANGE_ME","langfuse"="{\"POSTGRES_PASSWORD\":\"CHANGE_ME\",\"CLICKHOUSE_PASSWORD\":\"CHANGE_ME\",\"REDIS_AUTH\":\"CHANGE_ME\",\"MINIO_ROOT_PASSWORD\":\"CHANGE_ME\",\"SALT\":\"CHANGE_ME\",\"ENCRYPTION_KEY\":\"CHANGE_ME\",\"NEXTAUTH_SECRET\":\"CHANGE_ME\",\"LANGFUSE_INIT_PROJECT_PUBLIC_KEY\":\"CHANGE_ME\",\"LANGFUSE_INIT_PROJECT_SECRET_KEY\":\"CHANGE_ME\",\"LANGFUSE_INIT_USER_PASSWORD\":\"CHANGE_ME\"}"}'
   fi
 }
 
