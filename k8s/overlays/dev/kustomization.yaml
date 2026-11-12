@@ -15,22 +15,29 @@ labels:
 images:
 - name: ghcr.io/leandroamariles/backend
   newName: ghcr.io/leandroamariles/backend
-  newTag: v0.16.0
+  newTag: v0.17.0
 - name: ghcr.io/leandroamariles/frontend
   newName: ghcr.io/leandroamariles/frontend
-  newTag: v0.16.0
+  newTag: v0.17.0
 - name: ghcr.io/leandroamariles/ingest
   newName: ghcr.io/leandroamariles/ingest
-  newTag: v0.16.0
+  newTag: v0.17.0
+  # Trazas de LLM hacia el Langfuse del clúster (LAB-64); las claves vienen de backend-langfuse.
 configMapGenerator:
 - behavior: merge
   literals:
   - LOGGING_LEVEL_ROOT=DEBUG
-  # Trazas de LLM hacia el Langfuse del clúster (LAB-64); las claves vienen de backend-langfuse.
   - SHOPLAB_CHAT_TRACING_ENABLED=true
   - SHOPLAB_CHAT_TRACING_ENDPOINT=http://langfuse-web:3000/api/public/otel
   - SHOPLAB_CHAT_TRACING_ENVIRONMENT=dev
   name: backend-config
+# Postgres corre en el Docker del host (ver postgres-host.yaml), con su volumen propio: los datos sobreviven a make down.
+# Se quitan el StatefulSet, su configuración y su ExternalSecret (el backend tiene el suyo), y el Service `postgres` pasa
+# a no tener selector para que lo sirva el EndpointSlice del host.
+# Ollama corre en el Docker del host (ver ollama-host.yaml): se quitan el StatefulSet y su configuración, y el Service
+# `ollama` pasa a no tener selector para que lo sirva el EndpointSlice del host.
+# Langfuse (LAB-64): los secretos salen de /shoplab/dev/langfuse. `langfuse-credentials` usa dataFrom (sin /spec/data) y
+# `backend-langfuse` lee dos propiedades del mismo JSON.
 patches:
 - path: patches/resources.yaml
 - patch: |-
@@ -40,9 +47,6 @@ patches:
   target:
     kind: Ingress
     name: shoplab
-# Postgres corre en el Docker del host (ver postgres-host.yaml), con su volumen propio: los datos sobreviven a make down.
-# Se quitan el StatefulSet, su configuración y su ExternalSecret (el backend tiene el suyo), y el Service `postgres` pasa
-# a no tener selector para que lo sirva el EndpointSlice del host.
 - patch: |-
     $patch: delete
     apiVersion: apps/v1
@@ -73,8 +77,6 @@ patches:
   target:
     kind: Service
     name: postgres
-# Ollama corre en el Docker del host (ver ollama-host.yaml): se quitan el StatefulSet y su configuración, y el Service
-# `ollama` pasa a no tener selector para que lo sirva el EndpointSlice del host.
 - patch: |-
     $patch: delete
     apiVersion: apps/v1
@@ -106,8 +108,6 @@ patches:
   target:
     kind: ExternalSecret
     name: backend-credentials
-# Langfuse (LAB-64): los secretos salen de /shoplab/dev/langfuse. `langfuse-credentials` usa dataFrom (sin /spec/data) y
-# `backend-langfuse` lee dos propiedades del mismo JSON.
 - patch: |-
     - op: replace
       path: /spec/dataFrom/0/extract/key
