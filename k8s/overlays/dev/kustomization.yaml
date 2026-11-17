@@ -9,6 +9,7 @@ resources:
 - hpa.yaml
 - ollama-host.yaml
 - postgres-host.yaml
+- networkpolicy-no-direct-ollama.yaml
 labels:
 - pairs:
     app.kubernetes.io/environment: dev
@@ -125,3 +126,19 @@ patches:
   target:
     kind: ExternalSecret
     name: backend-langfuse
+# Gateway de modelos (LAB-84): los secretos salen de /shoplab/dev/litellm. `litellm-credentials` usa dataFrom y
+# `backend-litellm` lee la clave virtual del backend del mismo JSON.
+- patch: |-
+    - op: replace
+      path: /spec/dataFrom/0/extract/key
+      value: /shoplab/dev/litellm
+  target:
+    kind: ExternalSecret
+    name: litellm-credentials
+- patch: |-
+    - op: replace
+      path: /spec/data/0/remoteRef/key
+      value: /shoplab/dev/litellm
+  target:
+    kind: ExternalSecret
+    name: backend-litellm

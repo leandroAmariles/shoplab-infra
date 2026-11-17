@@ -10,6 +10,7 @@ resources:
   - ingest
   - ingress
   - langfuse
+  - litellm
 labels:
   - pairs:
       app.kubernetes.io/part-of: shoplab

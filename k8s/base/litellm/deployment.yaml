@@ -1,0 +1,118 @@
+# El gateway (LAB-84). La configuración y los scripts vienen del ConfigMap `litellm-files` (misma fuente que docker compose).
+# `entrypoint.sh` renderiza config.yaml a /tmp, avisa de los modelos de Ollama que falten y lanza LiteLLM.
+# Ollama es el `Service` `ollama` (en DEV lo sirve el Ollama del host por EndpointSlice, ver overlays/dev/ollama-host.yaml).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: litellm
+  labels:
+    app.kubernetes.io/name: litellm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: litellm
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: litellm
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: litellm
+          image: ghcr.io/berriai/litellm:v1.109.1
+          command: ["sh", "/app/shoplab/entrypoint.sh"]
+          ports:
+            - name: http
+              containerPort: 4000
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-credentials
+                  key: POSTGRES_PASSWORD
+            - name: DATABASE_URL
+              value: postgresql://litellm:$(POSTGRES_PASSWORD)@litellm-postgres:5432/litellm
+            - name: LITELLM_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-credentials
+                  key: LITELLM_MASTER_KEY
+            # Opcional: sin ella el modelo `chat-cloud` no existe y el gateway no sale a Internet (FR-011).
+            - name: CLOUD_PROVIDER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-credentials
+                  key: CLOUD_PROVIDER_API_KEY
+                  optional: true
+            - name: DISABLE_ADMIN_UI
+              value: "true"
+            - name: GATEWAY_ENVIRONMENT
+              value: dev
+            - name: OLLAMA_API_BASE
+              value: http://ollama:11434
+            - name: PYTHONPATH
+              value: /app/shoplab
+            - name: HOME
+              value: /tmp
+          readinessProbe:
+            httpGet:
+              path: /health/readiness
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health/liveliness
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            # Verificado con docker: arranca sano, conecta con su base y registra peticiones con el sistema de archivos
+            # de solo lectura, un usuario sin privilegios y /tmp (emptyDir) como único sitio de escritura (HOME apunta allí).
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: files
+              mountPath: /app/shoplab
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: files
+          configMap:
+            name: litellm-files
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm
+  labels:
+    app.kubernetes.io/name: litellm
+spec:
+  selector:
+    app.kubernetes.io/name: litellm
+  ports:
+    - name: http
+      port: 4000
+      targetPort: http

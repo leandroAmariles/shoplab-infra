@@ -1,0 +1,22 @@
+# Gateway de modelos LiteLLM (LAB-84, ADR-0023 de shoplab-helpdesk): único camino de la aplicación hacia Ollama y hacia
+# cualquier proveedor cloud. Sin Ingress: se accede por `kubectl port-forward svc/litellm 4000:4000`.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - externalsecret.yaml
+  - postgres.yaml
+  - deployment.yaml
+  - job-bootstrap-keys.yaml
+  - networkpolicy.yaml
+configMapGenerator:
+  # La misma configuración que usa docker compose (infra/litellm de shoplab-helpdesk): se copia con
+  # scripts/sync-litellm-files.sh, así hay una sola fuente. El hash del nombre reinicia el gateway al cambiarla.
+  - name: litellm-files
+    files:
+      - files/config.yaml
+      - files/keys.yaml
+      - files/entrypoint.sh
+      - files/render_config.py
+      - files/check_models.py
+      - files/bootstrap_keys.py
+      - files/shoplab_callbacks.py
