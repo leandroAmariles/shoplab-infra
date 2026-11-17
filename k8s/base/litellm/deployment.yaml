@@ -85,6 +85,9 @@ spec:
               memory: 1Gi
           securityContext:
             allowPrivilegeEscalation: false
+            # Verificado con docker: arranca sano, conecta con su base y registra peticiones con el sistema de archivos
+            # de solo lectura, un usuario sin privilegios y /tmp (emptyDir) como único sitio de escritura (HOME apunta allí).
+            readOnlyRootFilesystem: true
             capabilities:
               drop: [ALL]
           volumeMounts:
