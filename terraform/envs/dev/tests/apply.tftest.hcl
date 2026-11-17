@@ -6,6 +6,7 @@ variables {
     postgres-password = "valor-de-prueba-1"
     llm-api-key       = "valor-de-prueba-2"
     langfuse          = "{\"POSTGRES_PASSWORD\":\"valor-de-prueba-3\",\"CLICKHOUSE_PASSWORD\":\"valor-de-prueba-3\",\"REDIS_AUTH\":\"valor-de-prueba-3\",\"MINIO_ROOT_PASSWORD\":\"valor-de-prueba-3\",\"SALT\":\"valor-de-prueba-3\",\"ENCRYPTION_KEY\":\"valor-de-prueba-3\",\"NEXTAUTH_SECRET\":\"valor-de-prueba-3\",\"LANGFUSE_INIT_PROJECT_PUBLIC_KEY\":\"valor-de-prueba-3\",\"LANGFUSE_INIT_PROJECT_SECRET_KEY\":\"valor-de-prueba-3\",\"LANGFUSE_INIT_USER_PASSWORD\":\"valor-de-prueba-3\"}"
+    litellm           = "{\"LITELLM_MASTER_KEY\":\"valor-de-prueba-4\",\"LITELLM_KEY_BACKEND\":\"valor-de-prueba-4\",\"LITELLM_KEY_INGEST\":\"valor-de-prueba-4\",\"POSTGRES_PASSWORD\":\"valor-de-prueba-4\"}"
   }
 }
 

@@ -10,8 +10,10 @@
 # los puertos que Docker publica en el host. `host.docker.internal` NO resuelve dentro del clúster. Si tu Docker usa otro
 # rango, la dirección se obtiene con:
 #   docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}'
-# Requisito: el Ollama de Docker debe estar arriba (docker compose -f infra/docker-compose.yml up -d ollama) y, para la
-# GPU, con `-f infra/docker-compose.gpu.yml`. Sin él, el backend y el ingest no tienen chat ni embeddings.
+# Requisito: el Ollama de Docker debe estar arriba y con el puerto publicado (desde LAB-84 no lo publica por defecto):
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.ollama-host.yml up -d ollama
+# y, para la GPU, añadir también `-f infra/docker-compose.gpu.yml`. Solo el gateway (litellm) lo usa: la salida de backend e
+# ingest hacia este puerto se corta en networkpolicy-no-direct-ollama.yaml. Sin él, el backend y el ingest no tienen chat ni embeddings.
 apiVersion: discovery.k8s.io/v1
 kind: EndpointSlice
 metadata:
