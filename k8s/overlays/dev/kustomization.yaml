@@ -16,13 +16,13 @@ labels:
 images:
 - name: ghcr.io/leandroamariles/backend
   newName: ghcr.io/leandroamariles/backend
-  newTag: v0.17.0
+  newTag: v0.18.0
 - name: ghcr.io/leandroamariles/frontend
   newName: ghcr.io/leandroamariles/frontend
-  newTag: v0.17.0
+  newTag: v0.18.0
 - name: ghcr.io/leandroamariles/ingest
   newName: ghcr.io/leandroamariles/ingest
-  newTag: v0.17.0
+  newTag: v0.18.0
   # Trazas de LLM hacia el Langfuse del clúster (LAB-64); las claves vienen de backend-langfuse.
 configMapGenerator:
 - behavior: merge
@@ -39,6 +39,8 @@ configMapGenerator:
 # `ollama` pasa a no tener selector para que lo sirva el EndpointSlice del host.
 # Langfuse (LAB-64): los secretos salen de /shoplab/dev/langfuse. `langfuse-credentials` usa dataFrom (sin /spec/data) y
 # `backend-langfuse` lee dos propiedades del mismo JSON.
+# Gateway de modelos (LAB-84): los secretos salen de /shoplab/dev/litellm. `litellm-credentials` usa dataFrom y
+# `backend-litellm` lee la clave virtual del backend del mismo JSON.
 patches:
 - path: patches/resources.yaml
 - patch: |-
@@ -126,8 +128,6 @@ patches:
   target:
     kind: ExternalSecret
     name: backend-langfuse
-# Gateway de modelos (LAB-84): los secretos salen de /shoplab/dev/litellm. `litellm-credentials` usa dataFrom y
-# `backend-litellm` lee la clave virtual del backend del mismo JSON.
 - patch: |-
     - op: replace
       path: /spec/dataFrom/0/extract/key
