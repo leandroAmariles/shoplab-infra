@@ -21,3 +21,11 @@ AWS-0087
 AWS-0091
 AWS-0093
 AWS-0132
+
+# --- LAB-29: falso positivo del gateway de modelos (introducido con LAB-84) ---
+# Motivo: KSV-0109 ("stores secrets in ConfigMap") salta en el ConfigMap `litellm-files` por las claves
+# `input_cost_per_token` y `output_cost_per_token` de config.yaml: son el precio por token de cada modelo, no credenciales
+# (las claves reales vienen de ExternalSecrets). LiteLLM exige esos nombres, así que no se pueden renombrar. La excepción
+# es global (el .trivyignore no se limita a un recurso): si otro ConfigMap guardara un secreto de verdad, revisarlo a mano.
+# Responsable: @leandroAmariles | Revisar antes de: 2027-01-31
+KSV-0109
