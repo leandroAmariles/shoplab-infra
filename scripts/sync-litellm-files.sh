@@ -12,7 +12,9 @@ DEST="$ROOT/k8s/base/litellm/files"
 mkdir -p "$DEST"
 for file in config.yaml keys.yaml entrypoint.sh render_config.py check_models.py bootstrap_keys.py shoplab_callbacks.py; do
   [ -f "$SRC/$file" ] || die "falta $SRC/$file"
-  cp "$SRC/$file" "$DEST/$file"
+  # Con saltos de línea LF: en Windows el árbol de trabajo de shoplab-helpdesk trae CRLF, que acabaría en el ConfigMap
+  # (y un `entrypoint.sh` con CR no arranca en el contenedor).
+  tr -d '\r' < "$SRC/$file" > "$DEST/$file"
 done
 commit="$(git -C "$SRC_REPO" rev-parse HEAD 2>/dev/null || echo desconocido)"
 dirty=""

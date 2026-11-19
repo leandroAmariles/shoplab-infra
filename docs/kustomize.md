@@ -79,8 +79,9 @@ EndpointSlice (`overlays/dev/ollama-host.yaml`) a `172.17.0.1:11434`, la puerta 
 El backend y el ingest siguen usando `http://ollama:11434`. `host.docker.internal` no resuelve dentro del clúster.
 
 - Antes de `make seed` o de usar el chat, el Ollama de Docker debe estar arriba:
-  `docker compose -f infra/docker-compose.yml -f infra/docker-compose.gpu.yml up -d ollama` (sin el segundo `-f`
-  corre en CPU).
+  `docker compose -f infra/docker-compose.yml -f infra/docker-compose.ollama-host.yml -f infra/docker-compose.gpu.yml up -d ollama`
+  (sin el último `-f` corre en CPU; sin el del medio no publica el puerto 11434 y el clúster no lo alcanza). `make up`
+  avisa si Ollama no responde o le faltan modelos (`scripts/check-host-ollama.sh`).
 - Si tu Docker usa otro rango, ajusta la dirección del EndpointSlice:
   `docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}'`.
 - Solo aplica a `dev` (máquina del desarrollador); la base conserva el Ollama en el clúster para otros ambientes.

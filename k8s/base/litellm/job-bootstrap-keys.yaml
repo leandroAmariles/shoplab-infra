@@ -52,6 +52,13 @@ spec:
                 secretKeyRef:
                   name: litellm-credentials
                   key: LITELLM_KEY_INGEST
+            # Clave de la evaluacion de calidad de respuesta (LAB-29): solo llama a `judge` y `embeddings`. Es obligatoria:
+            # el bootstrap aborta si falta la variable de una clave de keys.yaml (`make secrets` la anade al secreto local).
+            - name: LITELLM_KEY_EVAL
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-credentials
+                  key: LITELLM_KEY_EVAL
             - name: CLOUD_PROVIDER_API_KEY
               valueFrom:
                 secretKeyRef:
