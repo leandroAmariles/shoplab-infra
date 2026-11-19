@@ -27,7 +27,6 @@ images:
 configMapGenerator:
 - behavior: merge
   literals:
-  - LOGGING_LEVEL_ROOT=DEBUG
   - SHOPLAB_CHAT_TRACING_ENABLED=true
   - SHOPLAB_CHAT_TRACING_ENDPOINT=http://langfuse-web:3000/api/public/otel
   - SHOPLAB_CHAT_TRACING_ENVIRONMENT=dev
