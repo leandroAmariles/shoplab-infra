@@ -3,12 +3,12 @@
 # El clúster de dev lo consume a través de LiteLLM: sin `llama3.2:3b` y `bge-m3` el chat y la ingesta no funcionan, y sin el
 # juez (`qwen2.5:7b`) solo falla `make quality` (LAB-29).
 #   OLLAMA_URL         dónde responde Ollama (por defecto http://localhost:11434)
-#   OLLAMA_MODELS      modelos que necesita la app (por defecto: llama3.2:3b bge-m3)
+#   OLLAMA_MODELS      modelos que necesita la app (por defecto: llama3.2:3b llama3.2:1b bge-m3; el 1b es el chat-fallback del gateway)
 #   OLLAMA_JUDGE_MODEL modelo del juez de calidad (por defecto: qwen2.5:7b)
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 OLLAMA_URL="${OLLAMA_URL:-http://localhost:11434}"
-OLLAMA_MODELS="${OLLAMA_MODELS:-llama3.2:3b bge-m3}"
+OLLAMA_MODELS="${OLLAMA_MODELS:-llama3.2:3b llama3.2:1b bge-m3}"
 OLLAMA_JUDGE_MODEL="${OLLAMA_JUDGE_MODEL:-qwen2.5:7b}"
 
 tags="$(curl -fsS -m 5 "$OLLAMA_URL/api/tags" 2>/dev/null || true)"
@@ -23,13 +23,19 @@ if [ -z "$tags" ]; then
   exit 0
 fi
 
+# Ollama lista un modelo sin etiqueta como `nombre:latest` (bge-m3 -> bge-m3:latest): se acepta con o sin ella.
+has_model() { # modelo
+  case "$tags" in *"\"name\":\"$1\""*) return 0 ;; esac
+  case "$1" in *:*) return 1 ;; esac
+  case "$tags" in *"\"name\":\"$1:latest\""*) return 0 ;; esac
+  return 1
+}
+
 missing=""
 for model in $OLLAMA_MODELS; do
-  case "$tags" in *"\"name\":\"$model\""*) ;; *) missing="$missing $model" ;; esac
+  has_model "$model" || missing="$missing $model"
 done
 [ -z "$missing" ] || log "AVISO: a Ollama le faltan modelos de la app:$missing (descárgalos con ollama pull o con OLLAMA_*_MODEL en shoplab-helpdesk/infra/.env)"
-case "$tags" in
-  *"\"name\":\"$OLLAMA_JUDGE_MODEL\""*) ;;
-  *) log "AVISO: falta el modelo del juez $OLLAMA_JUDGE_MODEL: solo lo necesita make quality (OLLAMA_JUDGE_MODEL=$OLLAMA_JUDGE_MODEL en shoplab-helpdesk/infra/.env, o ollama pull)" ;;
-esac
+has_model "$OLLAMA_JUDGE_MODEL" \
+  || log "AVISO: falta el modelo del juez $OLLAMA_JUDGE_MODEL: solo lo necesita make quality (OLLAMA_JUDGE_MODEL=$OLLAMA_JUDGE_MODEL en shoplab-helpdesk/infra/.env, o ollama pull)"
 exit 0
