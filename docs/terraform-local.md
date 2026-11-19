@@ -31,7 +31,8 @@ No hace falta ninguna credencial de AWS: las que usa el proveedor son ficticias 
 
    ```bash
    cp terraform/envs/dev/secrets.auto.tfvars.example terraform/envs/dev/secrets.auto.tfvars
-   # edita los valores; también puedes usar la variable de entorno TF_VAR_secrets
+   # pon tu postgres-password (el de tu Postgres de Docker); `make up` (o `make secrets`) completa langfuse y litellm
+   # con valores aleatorios si faltan, sin tocar lo que ya hay. También puedes usar la variable de entorno TF_VAR_secrets
    ```
 
 2. Levanta todo de cero:

@@ -9,6 +9,11 @@ command -v terraform >/dev/null || die "Terraform no está instalado"
 if [ ! -f "$ENV_DIR/secrets.auto.tfvars" ] && [ -z "${TF_VAR_secrets:-}" ]; then
   die "faltan los valores de secretos: copia $ENV_DIR/secrets.auto.tfvars.example como secrets.auto.tfvars y complétalo (o define TF_VAR_secrets)"
 fi
+# Completa lo que falte (langfuse, litellm y la clave `eval` de LAB-29) sin tocar lo que ya hay: sin ellas el Job
+# litellm-bootstrap-keys aborta y el gateway no queda con claves. Si no se puede completar, no se levanta nada a medias.
+bash "$ROOT/scripts/ensure-secrets.sh"
+# Ollama corre en el host (Docker), fuera del clúster: solo avisa si le faltan modelos.
+bash "$ROOT/scripts/check-host-ollama.sh"
 
 # Puerto 4566 ocupado por algo que no es nuestro Floci.
 if ! docker ps --format '{{.Names}}' | grep -qx shoplab-floci; then

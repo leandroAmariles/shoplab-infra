@@ -10,7 +10,7 @@ La decisión y el diseño están en `shoplab-helpdesk` (ADR-0023 y `docs/gateway
 | `StatefulSet litellm-postgres` (PVC `local-path`, 1 GiB) | Su estado propio: claves virtuales y gasto. |
 | `ConfigMap litellm-files` | `config.yaml`, `keys.yaml` y los scripts; se genera desde `k8s/base/litellm/files/`. |
 | `Job litellm-bootstrap-keys` (hook `PostSync` de Argo CD) | Crea o actualiza las claves virtuales; idempotente. |
-| `ExternalSecret litellm-credentials` | `/shoplab/dev/litellm`: `LITELLM_MASTER_KEY`, `LITELLM_KEY_BACKEND`, `LITELLM_KEY_INGEST`, `POSTGRES_PASSWORD` y, opcional, `CLOUD_PROVIDER_API_KEY`. |
+| `ExternalSecret litellm-credentials` | `/shoplab/dev/litellm`: `LITELLM_MASTER_KEY`, `LITELLM_KEY_BACKEND`, `LITELLM_KEY_INGEST`, `LITELLM_KEY_EVAL` (la de la evaluación de calidad, LAB-29), `POSTGRES_PASSWORD` y, opcional, `CLOUD_PROVIDER_API_KEY`. |
 | `ExternalSecret backend-litellm` | Entrega la clave virtual del backend (`SPRING_AI_OPENAI_API_KEY`). |
 | `NetworkPolicy` | Solo `backend`, `ingest` y el Job llegan a `litellm`; solo `litellm` llega a su Postgres. En `dev`, `backend` e `ingest` no pueden salir hacia el puerto de Ollama del host. |
 
@@ -19,6 +19,22 @@ La decisión y el diseño están en `shoplab-helpdesk` (ADR-0023 y `docs/gateway
 Crea el secreto JSON **antes** de sincronizar (con valores `sk-...` reales, sin marcadores `change-me`/`local`: el Job los rechaza en
 `dev`). Terraform lo declara en `terraform/modules/secrets` (`litellm`) y `secrets.auto.tfvars.example` muestra la forma.
 `CLOUD_PROVIDER_API_KEY` es opcional: sin ella no existe el modelo `chat-cloud` y el gateway no sale a Internet.
+
+`LITELLM_KEY_EVAL` es **obligatoria** desde LAB-29: el Job `litellm-bootstrap-keys` aborta si falta la variable de una clave de
+`keys.yaml`, y sin el Job el gateway queda sin claves. En local no hay que escribirla a mano: `make secrets` (que `make up` ya
+ejecuta) completa `secrets.auto.tfvars` con lo que falte (`langfuse`, `litellm` y la clave `eval`, con valores aleatorios en el
+formato que exigen el gateway y Langfuse). Solo **añade**: nunca cambia un valor existente (p. ej. `postgres-password`, que
+debe coincidir con tu Postgres de Docker) y no imprime ningún valor. Tras añadir claves hay que repetir `make up` para que
+Terraform las suba a Secrets Manager y External Secrets las sincronice.
+
+## Medición de calidad de las respuestas (LAB-29)
+
+`make quality` ejecuta `python -m shoplab_eval quality` de `shoplab-helpdesk/eval` contra el ingress, con el gateway como juez
+(modelo lógico `judge`, clave virtual `eval`: solo llama a `judge` y `embeddings`) y Langfuse para adjuntar las puntuaciones a
+las trazas. Las claves salen de los Secrets del clúster y viajan por variables de entorno: no se imprimen. Requiere `make up`,
+`make seed`, los túneles de `make forward` (LiteLLM `localhost:4000`, Langfuse `localhost:3001`) y el modelo del juez en el
+Ollama del host (`qwen2.5:7b`; descárgalo con `OLLAMA_JUDGE_MODEL=qwen2.5:7b` en `shoplab-helpdesk/infra/.env` o `ollama pull`).
+Argumentos de la medición: `make quality ARGS="--run-id demo-1 --no-langfuse"`. Los CSV quedan en `shoplab-helpdesk/eval/results/`.
 
 ## Configuración compartida con docker compose
 

@@ -3,7 +3,7 @@
 # salen de versions.env, la misma fuente que usa el workflow (LAB-99): `make check` reproduce lo que corre en CI.
 include versions.env
 
-.PHONY: up down forward seed bootstrap test test-integration scan \
+.PHONY: up down forward seed secrets quality bootstrap test test-integration scan \
 	check check-tools fmt-check validate lint pins tf-test kustomize policies test-policies prom-rules test-ci-scripts trivy plan smoke
 
 bootstrap:
@@ -23,6 +23,16 @@ forward:
 # Carga data/kb/*.md de shoplab-helpdesk en la base de conocimiento (POST /api/documents). make down borra la base: repetir tras make up.
 seed:
 	@bash scripts/seed.sh
+
+# Completa secrets.auto.tfvars con lo que falte (langfuse, litellm, clave `eval`) sin cambiar lo que ya hay ni imprimir valores;
+# make up ya lo hace. Tras añadir claves nuevas, repetir make up para que Terraform las suba a Secrets Manager.
+secrets:
+	@bash scripts/ensure-secrets.sh
+
+# Mide la calidad de las respuestas del asistente de dev (LAB-29). Necesita make up, make seed y los túneles (make forward).
+# Argumentos de la medición: make quality ARGS="--run-id demo-1 --no-langfuse"
+quality:
+	@bash scripts/quality.sh $(ARGS)
 
 test:
 	@bash scripts/test.sh
@@ -66,6 +76,7 @@ test-policies:
 # Decisión de omitir la prueba de humo en el commit automático de despliegue de dev (sin emulador ni herramientas extra).
 test-ci-scripts:
 	@bash scripts/tests/dev-deploy-only.test.sh
+	@bash scripts/tests/ensure-secrets.test.sh
 
 # Reglas de alerta del backend (LAB-102): promtool check + test rules sobre la PrometheusRule renderizada.
 prom-rules: kustomize

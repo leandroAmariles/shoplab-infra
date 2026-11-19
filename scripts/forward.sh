@@ -73,6 +73,10 @@ forward ingress ingress-nginx ingress-nginx-controller "$INGRESS_PORT" 80 argocd
 # La observabilidad es opcional para probar la app: si un servicio no existe aún, solo se avisa.
 forward grafana monitoring kube-prometheus-stack-grafana 3000 80
 forward prometheus monitoring kube-prometheus-stack-prometheus 9090 9090
+# Gateway de modelos y Langfuse: los usa `make quality` (LAB-29) y sirven para inspeccionar trazas. Van en el namespace de la app.
+# LiteLLM responde 401/404 a la raíz sin clave, y cualquier código distinto de 000 prueba que el túnel funciona.
+forward litellm shoplab-dev litellm 4000 4000
+forward langfuse shoplab-dev langfuse-web 3001 3000
 forward alertmanager monitoring kube-prometheus-stack-alertmanager 9093 9093
 # Postgres para clientes SQL del host. Si el Service `postgres` tiene selector, hay un pod: túnel al 5433 (el 5432 lo
 # ocupa el Postgres de Docker de shoplab-helpdesk). Si no tiene (dev lo sirve desde Docker, ver docs/kustomize.md), no hay
@@ -99,6 +103,8 @@ cat >&2 <<SUMMARY
   $(mark ingress)  App ShopLab   http://shoplab.localtest.me:$INGRESS_PORT       (/api -> backend, / -> frontend)
   $(mark grafana)  Grafana       http://localhost:3000                       usuario admin; contraseña:
                                  kubectl --kubeconfig $KUBECONFIG_FILE -n monitoring get secret kube-prometheus-stack-grafana -o jsonpath='{.data.admin-password}' | base64 -d
+  $(mark litellm)  LiteLLM       http://localhost:4000/v1                    gateway de modelos (make quality lo usa con la clave eval)
+  $(mark langfuse)  Langfuse       http://localhost:3001                       trazas del asistente y puntuaciones de calidad
   $(mark prometheus)  Prometheus    http://localhost:9090
   $(mark alertmanager)  Alertmanager  http://localhost:9093
   $(mark floci)  Floci (API AWS) http://localhost:4566
