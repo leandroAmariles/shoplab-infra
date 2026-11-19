@@ -30,6 +30,11 @@ spec:
             - name: http
               containerPort: 3000
           env:
+            # Kubernetes fija HOSTNAME al nombre del pod y Next.js escucha en ese nombre (la IP del pod), no en localhost:
+            # las sondas funcionan, pero `kubectl port-forward` entra por localhost y recibe «connection refused». Sin esto no
+            # hay acceso por el túnel del 3001 (que usa `make quality` para adjuntar las puntuaciones, LAB-29).
+            - name: HOSTNAME
+              value: "0.0.0.0"
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
