@@ -24,12 +24,17 @@ images:
   newName: ghcr.io/leandroamariles/ingest
   newTag: v0.19.2
   # Trazas de LLM hacia el Langfuse del clúster (LAB-64); las claves vienen de backend-langfuse.
+  # Prompts del chat gestionados en el mismo Langfuse (LAB-85, ADR-0027 de shoplab-helpdesk): usan esas mismas claves, y el
+  # backend crea al arrancar los que no existen. Sin SHOPLAB_CHAT_PROMPTS_OVERRIDE_TOKEN: DEV no admite fijar versiones.
 configMapGenerator:
 - behavior: merge
   literals:
   - SHOPLAB_CHAT_TRACING_ENABLED=true
   - SHOPLAB_CHAT_TRACING_ENDPOINT=http://langfuse-web:3000/api/public/otel
   - SHOPLAB_CHAT_TRACING_ENVIRONMENT=dev
+  - SHOPLAB_CHAT_PROMPTS_ENABLED=true
+  - SHOPLAB_CHAT_PROMPTS_BASE_URL=http://langfuse-web:3000
+  - SHOPLAB_CHAT_PROMPTS_PUBLISH_MISSING=true
   name: backend-config
 # Postgres corre en el Docker del host (ver postgres-host.yaml), con su volumen propio: los datos sobreviven a make down.
 # Se quitan el StatefulSet, su configuración y su ExternalSecret (el backend tiene el suyo), y el Service `postgres` pasa
