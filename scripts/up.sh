@@ -41,6 +41,25 @@ apply_timeout=()
   -var "environment=$ENV_NAME" -var "emulator_endpoint=$EMULATOR_URL" \
   -var "cluster_mode=$CLUSTER_MODE"
 
+# Terraform termina cuando Argo CD está instalado, no cuando ha sincronizado la app: el namespace y los pods de LiteLLM y
+# Langfuse aparecen minutos después. Si forward.sh corre antes, esos dos túneles salen en FALLO. Se espera (acotado por
+# WAIT_APPS_TIMEOUT, 600 s por defecto) y, si no llegan a tiempo, solo se avisa: make forward los relanza.
+#   APP_NAMESPACE   namespace de la app (por defecto shoplab-dev, el mismo que usa forward.sh)
+wait_for_apps() {
+  local ns="${APP_NAMESPACE:-shoplab-dev}" deadline kc
+  command -v kubectl >/dev/null && [ -f "$ENV_DIR/kubeconfig.yaml" ] || return 0
+  kc=(kubectl --kubeconfig "$ENV_DIR/kubeconfig.yaml")
+  deadline=$((SECONDS + ${WAIT_APPS_TIMEOUT:-600}))
+  log "esperando a que Argo CD despliegue litellm y langfuse-web en $ns (hasta ${WAIT_APPS_TIMEOUT:-600} s)"
+  until "${kc[@]}" -n "$ns" get deploy/litellm deploy/langfuse-web >/dev/null 2>&1; do
+    [ "$SECONDS" -lt "$deadline" ] || { log "AVISO: litellm y langfuse-web aún no existen en $ns; sus túneles pueden fallar, relánzalos con make forward"; return 0; }
+    sleep 5
+  done
+  "${kc[@]}" -n "$ns" wait --for=condition=Available deploy/litellm deploy/langfuse-web --timeout="$((deadline - SECONDS > 1 ? deadline - SECONDS : 1))s" >/dev/null 2>&1 \
+    || log "AVISO: litellm y langfuse-web no quedaron disponibles a tiempo; sus túneles pueden fallar, relánzalos con make forward"
+}
+wait_for_apps
+
 # Sin kubectl o con el puerto ocupado no se falla: el entorno ya está arriba y se puede reintentar con make forward.
 bash "$ROOT/scripts/forward.sh" || log "AVISO: el ingress no quedó expuesto; resuélvelo y ejecuta make forward"
 
