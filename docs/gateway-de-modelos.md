@@ -36,6 +36,23 @@ las trazas. Las claves salen de los Secrets del clúster y viajan por variables 
 Ollama del host (`qwen2.5:7b`; descárgalo con `OLLAMA_JUDGE_MODEL=qwen2.5:7b` en `shoplab-helpdesk/infra/.env` o `ollama pull`).
 Argumentos de la medición: `make quality ARGS="--run-id demo-1 --no-langfuse"`. Los CSV quedan en `shoplab-helpdesk/eval/results/`.
 
+## Historial de evaluación (LAB-31)
+
+`make quality` también guarda cada ejecución en el historial del backend (esquema `eval`, módulo `eval` de shoplab-helpdesk): la
+herramienta de `eval/` no tiene credenciales de base de datos, entrega la ejecución al backend con un token.
+
+| Pieza | Qué es |
+|---|---|
+| Secreto `/shoplab/dev/eval` | JSON con `EVAL_PERSISTENCE_TOKEN` (64 hexadecimales). `make secrets` (y `make up`) lo genera si falta, sin tocar lo que ya hay ni imprimirlo |
+| `ExternalSecret backend-eval` | Lo entrega al backend como `SHOPLAB_EVAL_PERSISTENCE_TOKEN` (`shoplab.eval.persistence.token`); el `envFrom` del backend lo declara `optional: true` |
+
+Es **opcional**: sin el secreto el backend arranca igual y responde 403 a quien intente guardar una ejecución; `make quality`
+avisa y mide sin guardar. `make quality` lee el mismo token del Secret `backend-eval` y lo pasa a la herramienta
+(`SHOPLAB_EVAL_TOKEN`, con origen `dev`); `make quality ARGS="--no-save"` lo evita. Para comprobarlo:
+`kubectl -n shoplab-dev get secret backend-eval`. El módulo `eval` llega a dev con el primer release que lo incluye (el despliegue
+continuo solo despliega versiones, ADR-0012 de shoplab-helpdesk): fusiona este cambio **antes**. Cómo leer el historial:
+`shoplab-helpdesk/eval/README.md`.
+
 ## Configuración compartida con docker compose
 
 La configuración del gateway vive en `shoplab-helpdesk/infra/litellm/`. Tras cambiarla, ejecuta

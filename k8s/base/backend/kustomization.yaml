@@ -6,6 +6,7 @@ resources:
   - externalsecret.yaml
   - externalsecret-langfuse.yaml
   - externalsecret-litellm.yaml
+  - externalsecret-eval.yaml
   - servicemonitor.yaml
   - prometheusrule.yaml
 configMapGenerator:
