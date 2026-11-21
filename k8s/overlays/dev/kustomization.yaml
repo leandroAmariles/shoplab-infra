@@ -45,6 +45,8 @@ configMapGenerator:
 # `backend-langfuse` lee dos propiedades del mismo JSON.
 # Gateway de modelos (LAB-84): los secretos salen de /shoplab/dev/litellm. `litellm-credentials` usa dataFrom y
 # `backend-litellm` lee la clave virtual del backend del mismo JSON.
+# Historial de evaluación (LAB-31): los secretos salen de /shoplab/dev/eval; `backend-eval` lee el token con el que `eval/`
+# guarda cada ejecución (opcional: el backend arranca sin él y rechaza guardar).
 patches:
 - path: patches/resources.yaml
 - patch: |-
@@ -146,3 +148,10 @@ patches:
   target:
     kind: ExternalSecret
     name: backend-litellm
+- patch: |-
+    - op: replace
+      path: /spec/data/0/remoteRef/key
+      value: /shoplab/dev/eval
+  target:
+    kind: ExternalSecret
+    name: backend-eval

@@ -35,6 +35,10 @@ spec:
                 name: backend-langfuse
             - secretRef:
                 name: backend-litellm
+            # Historial de evaluación (LAB-31): opcional, el backend arranca aunque este Secret no exista.
+            - secretRef:
+                name: backend-eval
+                optional: true
           startupProbe:
             httpGet:
               path: /actuator/health/liveness
