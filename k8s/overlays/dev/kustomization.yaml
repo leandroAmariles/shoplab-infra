@@ -16,13 +16,13 @@ labels:
 images:
 - name: ghcr.io/leandroamariles/backend
   newName: ghcr.io/leandroamariles/backend
-  newTag: v0.24.0
+  newTag: v0.25.0
 - name: ghcr.io/leandroamariles/frontend
   newName: ghcr.io/leandroamariles/frontend
-  newTag: v0.24.0
+  newTag: v0.25.0
 - name: ghcr.io/leandroamariles/ingest
   newName: ghcr.io/leandroamariles/ingest
-  newTag: v0.24.0
+  newTag: v0.25.0
   # Trazas de LLM hacia el Langfuse del clúster (LAB-64); las claves vienen de backend-langfuse.
   # Prompts del chat gestionados en el mismo Langfuse (LAB-85, ADR-0027 de shoplab-helpdesk): usan esas mismas claves, y el
   # backend crea al arrancar los que no existen. Sin SHOPLAB_CHAT_PROMPTS_OVERRIDE_TOKEN: DEV no admite fijar versiones.
