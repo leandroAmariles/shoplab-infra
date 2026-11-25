@@ -59,6 +59,12 @@ spec:
                 secretKeyRef:
                   name: litellm-credentials
                   key: LITELLM_KEY_EVAL
+            # retrieval-service (LAB-129): embeddings de documentos y consultas.
+            - name: LITELLM_KEY_RETRIEVAL
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-credentials
+                  key: LITELLM_KEY_RETRIEVAL
             - name: CLOUD_PROVIDER_API_KEY
               valueFrom:
                 secretKeyRef:
