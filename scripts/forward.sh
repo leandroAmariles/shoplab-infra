@@ -100,7 +100,7 @@ cat >&2 <<SUMMARY
 
 [shoplab-infra] Servicios accesibles en tu máquina
   $(mark ingress)  Argo CD       http://argocd.localtest.me:$INGRESS_PORT        usuario admin / contraseña admin
-  $(mark ingress)  App ShopLab   http://shoplab.localtest.me:$INGRESS_PORT       (/api -> backend, / -> frontend)
+  $(mark ingress)  App ShopLab   http://shoplab.localtest.me:$INGRESS_PORT       (/api -> gateway, / -> frontend)
   $(mark grafana)  Grafana       http://localhost:3000                       usuario admin; contraseña:
                                  kubectl --kubeconfig $KUBECONFIG_FILE -n monitoring get secret kube-prometheus-stack-grafana -o jsonpath='{.data.admin-password}' | base64 -d
   $(mark litellm)  LiteLLM       http://localhost:4000/v1                    gateway de modelos (make quality lo usa con la clave eval)
