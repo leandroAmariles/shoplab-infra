@@ -1,16 +1,15 @@
+# Dev of retrieval-service (LAB-129). `images:` is updated by the deploy job of shoplab-retrieval-service on every
+# release; the name must be the full image name or that job refuses to update it.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-resources:
-  - ../../base
-
 namespace: shoplab-dev
 
-replicas:
-  - name: retrieval-service
-    count: 1
+resources:
+  - ../../base
+  - networkpolicy.yaml
 
 images:
-  - name: retrieval-service
+  - name: ghcr.io/leandroamariles/retrieval-service
     newName: ghcr.io/leandroamariles/retrieval-service
-    newTag: v1.0.0
+    newTag: v0.2.0

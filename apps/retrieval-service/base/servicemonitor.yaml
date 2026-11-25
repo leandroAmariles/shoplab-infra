@@ -1,0 +1,12 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: retrieval-service
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: retrieval-service
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s

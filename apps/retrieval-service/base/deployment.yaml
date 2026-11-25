@@ -1,9 +1,8 @@
+# Knowledge base: documents, vectors and search (LAB-129 of shoplab-helpdesk, repo shoplab-retrieval-service).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: retrieval-service
-  labels:
-    app.kubernetes.io/name: retrieval-service
 spec:
   replicas: 1
   selector:
@@ -14,49 +13,61 @@ spec:
       labels:
         app.kubernetes.io/name: retrieval-service
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
       containers:
         - name: retrieval-service
-          image: ghcr.io/leandroamariles/retrieval-service:v1.0.0
-          imagePullPolicy: IfNotPresent
+          # The tag is set by the overlay; the deploy job of shoplab-retrieval-service updates it.
+          image: ghcr.io/leandroamariles/retrieval-service
           ports:
-            - containerPort: 8080
-              name: http
-          env:
-            - name: SPRING_PROFILES_ACTIVE
-              value: "dev"
-            - name: SPRING_APPLICATION_NAME
-              value: "retrieval-service"
-            - name: SPRING_DATASOURCE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: retrieval-service-db-secret
-                  key: SPRING_DATASOURCE_URL
-            - name: SPRING_DATASOURCE_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: retrieval-service-db-secret
-                  key: SPRING_DATASOURCE_USERNAME
-            - name: SPRING_DATASOURCE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: retrieval-service-db-secret
-                  key: SPRING_DATASOURCE_PASSWORD
-          resources:
-            requests:
-              cpu: 100m
-              memory: 256Mi
-            limits:
-              cpu: 500m
-              memory: 512Mi
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: retrieval-service-config
+            - secretRef:
+                name: retrieval-service-db
+            - secretRef:
+                name: retrieval-service-litellm
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 36
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
-              port: 8080
-            initialDelaySeconds: 30
+              port: http
             periodSeconds: 10
+            timeoutSeconds: 3
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
-              port: 8080
-            initialDelaySeconds: 20
-            periodSeconds: 5
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 384Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            # Uploads are buffered on disk.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

@@ -4,8 +4,22 @@ kind: Kustomization
 resources:
   - deployment.yaml
   - service.yaml
+  - servicemonitor.yaml
   - externalsecret.yaml
 
+# commonLabels, not labels: the Deployment that already exists has these in its selector, which cannot change.
 commonLabels:
   app.kubernetes.io/name: retrieval-service
   app.kubernetes.io/part-of: shoplab
+
+configMapGenerator:
+  - name: retrieval-service-config
+    literals:
+      - MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED=true
+      - POSTGRES_URL=jdbc:postgresql://postgres:5432/retrieval
+      - POSTGRES_USER=retrieval
+      # Embeddings go through the model gateway with the service's own virtual key (LAB-84).
+      - SPRING_AI_OPENAI_BASE_URL=http://litellm:4000/v1
+      - SHOPLAB_RETRIEVAL_INGEST_BASE_URL=http://ingest:8000
+      # Must be the model of the vectors that were migrated, or the search answers nothing (LAB-129).
+      - SHOPLAB_RETRIEVAL_EMBEDDING_MODEL_NAME=bge-m3
