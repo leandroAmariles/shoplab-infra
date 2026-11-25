@@ -73,6 +73,14 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Floci pide `registry:2` para el espejo de ECR; se deja ya en Docker, con ese nombre, antes de crear el clúster
+# (LAB-129). Si la descarga falla se sigue: Floci lo intentará por su cuenta.
+if docker pull -q "$FLOCI_REGISTRY_SOURCE" && docker tag "$FLOCI_REGISTRY_SOURCE" registry:2; then
+  log "registry:2 listo desde $FLOCI_REGISTRY_SOURCE"
+else
+  log "aviso: no se pudo bajar $FLOCI_REGISTRY_SOURCE"
+fi
+
 # Una descarga de imagen fallida (ErrImagePull) o un clúster k3s que no arranca dejan el apply en error o colgado; el
 # apply está acotado por APPLY_TIMEOUT. Se reintenta una vez desde cero (el estado vive en el Floci descartado).
 bash "$ROOT/scripts/up.sh" || {
