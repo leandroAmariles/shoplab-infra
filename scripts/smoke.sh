@@ -52,10 +52,25 @@ force_cleanup() {
     "$ENV_DIR/.cluster-mode"
 }
 
+# Desinstalar la raíz de Argo CD borra en cascada sus aplicaciones y espera a que termine cada recurso, y en CI los hay
+# que no terminan nunca (los PVC quedan Pending): el destroy se agotaba (LAB-129). El clúster se tira entero, así que se
+# sueltan antes: sin resincronización de la raíz, sin ApplicationSet y sin finalizers.
+release_argocd_apps() {
+  [ -f "$KUBECONFIG_FILE" ] || return 0
+  local no_finalizers='{"metadata":{"finalizers":null}}' app
+  log "soltando las aplicaciones de Argo CD antes de destruir"
+  kc --request-timeout=30s -n argocd patch application shoplab-root --type merge     -p '{"spec":{"syncPolicy":null},"metadata":{"finalizers":null}}' || true
+  kc --request-timeout=30s -n argocd delete applicationset --all --cascade=orphan --timeout=60s || true
+  for app in $(kc --request-timeout=30s -n argocd get applications -o name 2>/dev/null); do
+    kc --request-timeout=30s -n argocd patch "$app" --type merge -p "$no_finalizers" || true
+  done
+}
+
 cleanup() {
   status=$?
   [ "$status" -eq 0 ] || report_failure
   log "destruyendo el entorno y limpiando (código previo: $status)"
+  release_argocd_apps
   if ! bash "$ROOT/scripts/down.sh"; then
     log "down.sh falló o se agotó (DESTROY_TIMEOUT=${DESTROY_TIMEOUT}s); diagnóstico y limpieza forzada"
     report_docker
