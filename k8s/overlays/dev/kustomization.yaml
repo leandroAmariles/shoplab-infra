@@ -35,6 +35,11 @@ configMapGenerator:
   - SHOPLAB_CHAT_PROMPTS_ENABLED=true
   - SHOPLAB_CHAT_PROMPTS_BASE_URL=http://langfuse-web:3000
   - SHOPLAB_CHAT_PROMPTS_PUBLISH_MISSING=true
+  # LAB-129 cutover, together with the gateway routes (apps/gateway): the chat asks retrieval-service, and the module
+  # of the monolith stops indexing. Reverting this commit sends everything back.
+  - SHOPLAB_RETRIEVAL_CLIENT_MODE=http
+  - SHOPLAB_RETRIEVAL_CLIENT_BASE_URL=http://retrieval-service:8080
+  - SHOPLAB_RETRIEVAL_EMBEDDING_AUTO_INDEX=false
   name: backend-config
 # Postgres corre en el Docker del host (ver postgres-host.yaml), con su volumen propio: los datos sobreviven a make down.
 # Se quitan el StatefulSet, su configuración y su ExternalSecret (el backend tiene el suyo), y el Service `postgres` pasa

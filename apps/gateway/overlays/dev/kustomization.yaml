@@ -13,6 +13,9 @@ resources:
 configMapGenerator:
 - literals:
   - GATEWAY_MONOLITH_URI=http://backend:8080
+  # LAB-129: documents and knowledge are served by retrieval-service.
+  - SHOPLAB_GATEWAY_ROUTES_DOCUMENTS_URI=http://retrieval-service:8080
+  - SHOPLAB_GATEWAY_ROUTES_KNOWLEDGE_URI=http://retrieval-service:8080
   name: gateway-config
 
 images:
