@@ -8,13 +8,14 @@ kind: Kustomization
 namespace: shoplab-dev
 
 resources:
-  - ../../base
+- ../../base
 
 configMapGenerator:
-  - name: gateway-config
-    literals:
-      - GATEWAY_MONOLITH_URI=http://backend:8080
+- literals:
+  - GATEWAY_MONOLITH_URI=http://backend:8080
+  name: gateway-config
 
 images:
-  - name: ghcr.io/leandroamariles/gateway
-    newTag: v0.1.0
+- name: ghcr.io/leandroamariles/gateway
+  newName: ghcr.io/leandroamariles/gateway
+  newTag: v0.1.0
