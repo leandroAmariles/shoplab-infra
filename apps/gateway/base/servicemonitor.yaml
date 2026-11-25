@@ -1,0 +1,16 @@
+# Métricas del gateway, incluidas las peticiones por ruta (spring_cloud_gateway_requests_seconds). /actuator no sale
+# por el ingress, que solo envía /api al gateway.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gateway
+  labels:
+    app.kubernetes.io/name: gateway
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gateway
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
