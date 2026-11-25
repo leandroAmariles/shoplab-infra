@@ -75,7 +75,6 @@ test-policies:
 
 # Decisión de omitir la prueba de humo en el commit automático de despliegue de dev (sin emulador ni herramientas extra).
 test-ci-scripts:
-	@bash scripts/tests/dev-deploy-only.test.sh
 	@bash scripts/tests/ensure-secrets.test.sh
 
 # Reglas de alerta del backend (LAB-102): promtool check + test rules sobre la PrometheusRule renderizada.

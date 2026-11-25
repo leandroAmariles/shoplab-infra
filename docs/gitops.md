@@ -143,10 +143,10 @@ kubectl -n argocd describe application shoplab-dev
 - **Local:** el único ambiente es `dev` (CPU del nodo de Floci). El k3s de Floci no trae `StorageClass`: la
   plataforma instala `local-path-provisioner` y deja `local-path` como clase por defecto, para que los PVC de Postgres
   y Ollama se enlacen (ver [`kustomize.md`](kustomize.md)).
-- **Prueba de humo del CI:** exige `shoplab-root` `Synced` y `Healthy` y que cree `shoplab-dev`; no exige que `dev`
-  quede `Healthy` por lo anterior. Como Argo CD sincroniza git y la PR aún no está en `main`, el smoke apunta la raíz a
-  la revisión de la PR solo durante la prueba (`SMOKE_ROOT_REVISION`); `root.yaml` y las políticas siguen exigiendo
-  `targetRevision: main`.
+- **Prueba de humo (solo en local, `make smoke`; la CI no la ejecuta desde LAB-129):** exige `shoplab-root`
+  `Synced` y `Healthy` y que cree `shoplab-dev`; no exige que `dev` quede `Healthy` por lo anterior. Argo CD
+  sincroniza git: para probar una rama que aún no está en `main`, define `SMOKE_ROOT_REVISION` con su commit.
+  `root.yaml` y las políticas siguen exigiendo `targetRevision: main`.
 - **Puerto 8080:** si ya lo usa otra aplicación local, el `port-forward` no enlaza y las respuestas son de esa
   aplicación. Usa otro puerto (`... port-forward svc/ingress-nginx-controller 18080:80`) y
   `curl -H 'Host: argocd.localtest.me' http://127.0.0.1:18080/`.

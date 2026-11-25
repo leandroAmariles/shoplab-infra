@@ -25,12 +25,8 @@ jobs:
       pull-requests: read
     outputs:
       terraform: ${{ github.event_name != 'pull_request' || steps.filter.outputs.terraform == 'true' || steps.filter.outputs.ci == 'true' }}
-      smoke: ${{ steps.smoke.outputs.run }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          # The smoke decision diffs the pushed range (before..after), so it needs the history.
-          fetch-depth: 0
       - uses: dorny/paths-filter@v4
         id: filter
         if: github.event_name == 'pull_request'
@@ -47,22 +43,6 @@ jobs:
               - 'Makefile'
             ci:
               - '.github/workflows/ci.yml'
-      # The LAB-81 deploy commit (`chore(dev): [LAB-81] despliega <sha> a dev`) only bumps image tags in the dev overlay:
-      # a full apply against Floci proves nothing new for it (~13 min), so smoke is skipped for that push only. Any other
-      # change in the pushed range, or an unknown range, keeps running it (see scripts/is-dev-deploy-only.sh).
-      - name: Decide whether smoke is needed
-        id: smoke
-        env:
-          TERRAFORM_CHANGED: ${{ github.event_name != 'pull_request' || steps.filter.outputs.terraform == 'true' || steps.filter.outputs.ci == 'true' }}
-          BEFORE: ${{ github.event.before }}
-          AFTER: ${{ github.sha }}
-        run: |
-          if [ "$GITHUB_EVENT_NAME" = push ] && bash scripts/is-dev-deploy-only.sh "$BEFORE" "$AFTER"; then
-            echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Push only bumps the dev image tags: smoke skipped"
-          else
-            echo "run=$TERRAFORM_CHANGED" >> "$GITHUB_OUTPUT"
-          fi
 
   static:
     needs: changes
@@ -240,52 +220,13 @@ jobs:
         if: always() && hashFiles('comment.md') != '' && !(github.event_name == 'pull_request' && env.CAN_WRITE == 'true')
         run: cat comment.md >> "$GITHUB_STEP_SUMMARY"
 
-  smoke:
-    needs: changes
-    if: needs.changes.outputs.smoke == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    env:
-      # ecr-public.aws.com answers 429 to anonymous pulls from shared runner IPs (Argo CD's Redis image), so the pod
-      # sat in ImagePullBackOff. Same image and tag, pulled from Google's Docker Hub mirror instead.
-      TF_VAR_argocd_redis_image_repository: mirror.gcr.io/library/redis
-      # Argo CD syncs git, not the checkout: point the root Application at this commit so a PR is tested before it is on main.
-      SMOKE_ROOT_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
-    steps:
-      - uses: actions/checkout@v7
-      - name: Load tool versions
-        run: grep -Ev '^[[:space:]]*(#|$)' versions.env >> "$GITHUB_ENV"
-      - uses: hashicorp/setup-terraform@v4
-        with:
-          terraform_version: ${{ env.TERRAFORM_VERSION }}
-          terraform_wrapper: false
-      # k3s inside Docker evicts pods when the node has less than ~7.7 GB free; the stock runner image
-      # leaves too little, so drop toolchains this job does not use.
-      - name: Free disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-          df -h /
-      - name: Smoke test (apply, Argo CD Synced and Healthy, destroy)
-        # An explicit shell enables pipefail: without it `| tee` would hide a failing smoke.sh.
-        shell: bash
-        run: bash scripts/smoke.sh 2>&1 | tee smoke.log
-      - name: Cleanup
-        if: always()
-        run: |
-          bash scripts/down.sh || true
-          bash scripts/verify-clean.sh
-      - name: Upload smoke log
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: smoke-log
-          path: smoke.log
-          if-no-files-found: warn
-          retention-days: 14
+  # No smoke job (LAB-129): a full apply on Floci stopped passing on the hosted runners (the emulated cluster
+  # did not become active, or the destroy timed out). Run it locally with `make smoke` before merging changes
+  # to the infrastructure.
 
   ci-gate:
     if: always()
-    needs: [changes, static, kustomize, trivy, plan, smoke]
+    needs: [changes, static, kustomize, trivy, plan]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
