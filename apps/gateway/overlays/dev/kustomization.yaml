@@ -14,7 +14,6 @@ configMapGenerator:
   - name: gateway-config
     literals:
       - GATEWAY_MONOLITH_URI=http://backend:8080
-      - SHOPLAB_GATEWAY_ROUTES_EVAL_RESPONSETIMEOUT=119s
 
 images:
   - name: ghcr.io/leandroamariles/gateway
