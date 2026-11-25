@@ -1,0 +1,20 @@
+# Dev del gateway (LAB-107). `images:` lo actualiza el job de despliegue de shoplab-gateway con cada release; no se
+# edita a mano. Una ruta se mueve a su servicio añadiendo SHOPLAB_GATEWAY_ROUTES_<NOMBRE>_URI al configMapGenerator
+# (el nombre del ConfigMap cambia y el pod se reinicia solo). Guía: docs/fases/F5-mover-rutas-al-gateway.md de
+# shoplab-helpdesk.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: shoplab-dev
+
+resources:
+  - ../../base
+
+configMapGenerator:
+  - name: gateway-config
+    literals:
+      - GATEWAY_MONOLITH_URI=http://backend:8080
+
+images:
+  - name: ghcr.io/leandroamariles/gateway
+    newTag: v0.1.0
