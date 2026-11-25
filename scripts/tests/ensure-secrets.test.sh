@@ -44,7 +44,7 @@ EOF
 LANGFUSE='{\"POSTGRES_PASSWORD\":\"a\",\"CLICKHOUSE_PASSWORD\":\"a\",\"REDIS_AUTH\":\"a\",\"MINIO_ROOT_PASSWORD\":\"a\",\"SALT\":\"a\",\"ENCRYPTION_KEY\":\"a\",\"NEXTAUTH_SECRET\":\"a\",\"LANGFUSE_INIT_PROJECT_PUBLIC_KEY\":\"a\",\"LANGFUSE_INIT_PROJECT_SECRET_KEY\":\"a\",\"LANGFUSE_INIT_USER_PASSWORD\":\"a\"}'
 LITELLM_OLD='{\"LITELLM_MASTER_KEY\":\"sk-maestra-existente\",\"LITELLM_KEY_BACKEND\":\"sk-backend-existente\",\"LITELLM_KEY_INGEST\":\"sk-ingest-existente\",\"POSTGRES_PASSWORD\":\"pg-litellm-existente\"}'
 EVAL='{\"EVAL_PERSISTENCE_TOKEN\":\"token-eval-existente-no-tocar\"}'
-LITELLM_FULL='{\"LITELLM_MASTER_KEY\":\"sk-maestra-existente\",\"LITELLM_KEY_BACKEND\":\"sk-backend-existente\",\"LITELLM_KEY_INGEST\":\"sk-ingest-existente\",\"LITELLM_KEY_EVAL\":\"sk-eval-existente\",\"POSTGRES_PASSWORD\":\"pg-litellm-existente\"}'
+LITELLM_FULL='{\"LITELLM_MASTER_KEY\":\"sk-maestra-existente\",\"LITELLM_KEY_BACKEND\":\"sk-backend-existente\",\"LITELLM_KEY_INGEST\":\"sk-ingest-existente\",\"LITELLM_KEY_EVAL\":\"sk-eval-existente\",\"LITELLM_KEY_RETRIEVAL\":\"sk-retrieval-existente\",\"POSTGRES_PASSWORD\":\"pg-litellm-existente\"}'
 
 with_entries() { # litellm-json -> archivo con langfuse y litellm
   cat <<EOF
@@ -155,7 +155,7 @@ run_script "$f"
 
 # 9. TF_VAR_secrets: no toca ningún archivo; solo comprueba que estén las claves ---------------------------------------------
 f="$tmp/untouched.tfvars"; legacy > "$f"; cp "$f" "$tmp/untouched.orig"
-names_complete='{"postgres-password"="x","llm-api-key"="y","langfuse"="{\"POSTGRES_PASSWORD\":\"1\",\"CLICKHOUSE_PASSWORD\":\"1\",\"REDIS_AUTH\":\"1\",\"MINIO_ROOT_PASSWORD\":\"1\",\"SALT\":\"1\",\"ENCRYPTION_KEY\":\"1\",\"NEXTAUTH_SECRET\":\"1\",\"LANGFUSE_INIT_PROJECT_PUBLIC_KEY\":\"1\",\"LANGFUSE_INIT_PROJECT_SECRET_KEY\":\"1\",\"LANGFUSE_INIT_USER_PASSWORD\":\"1\"}","litellm"="{\"LITELLM_MASTER_KEY\":\"1\",\"LITELLM_KEY_BACKEND\":\"1\",\"LITELLM_KEY_INGEST\":\"1\",\"LITELLM_KEY_EVAL\":\"1\",\"POSTGRES_PASSWORD\":\"1\"}"}'
+names_complete='{"postgres-password"="x","llm-api-key"="y","langfuse"="{\"POSTGRES_PASSWORD\":\"1\",\"CLICKHOUSE_PASSWORD\":\"1\",\"REDIS_AUTH\":\"1\",\"MINIO_ROOT_PASSWORD\":\"1\",\"SALT\":\"1\",\"ENCRYPTION_KEY\":\"1\",\"NEXTAUTH_SECRET\":\"1\",\"LANGFUSE_INIT_PROJECT_PUBLIC_KEY\":\"1\",\"LANGFUSE_INIT_PROJECT_SECRET_KEY\":\"1\",\"LANGFUSE_INIT_USER_PASSWORD\":\"1\"}","litellm"="{\"LITELLM_MASTER_KEY\":\"1\",\"LITELLM_KEY_BACKEND\":\"1\",\"LITELLM_KEY_INGEST\":\"1\",\"LITELLM_KEY_EVAL\":\"1\",\"LITELLM_KEY_RETRIEVAL\":\"1\",\"POSTGRES_PASSWORD\":\"1\"}"}'
 out="$(TF_VAR_secrets="$names_complete" SECRETS_FILE="$f" bash "$script" 2>&1)"; code=$?
 [ "$code" -eq 0 ] && cmp -s "$f" "$tmp/untouched.orig"; expect "TF_VAR_secrets completa: sale bien y no toca el archivo" "$?"
 [[ "$out" == *aviso* ]] && [[ "$out" == *EVAL_PERSISTENCE_TOKEN* ]]; expect "TF_VAR_secrets sin eval: avisa de que es opcional y no falla" "$?"

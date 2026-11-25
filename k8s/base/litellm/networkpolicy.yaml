@@ -20,6 +20,9 @@ spec:
               app.kubernetes.io/name: ingest
         - podSelector:
             matchLabels:
+              app.kubernetes.io/name: retrieval-service
+        - podSelector:
+            matchLabels:
               app.kubernetes.io/name: litellm-bootstrap-keys
       ports:
         - port: 4000
