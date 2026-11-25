@@ -6,10 +6,10 @@ kind: Kustomization
 namespace: shoplab-dev
 
 resources:
-  - ../../base
-  - networkpolicy.yaml
+- ../../base
+- networkpolicy.yaml
 
 images:
-  - name: ghcr.io/leandroamariles/retrieval-service
-    newName: ghcr.io/leandroamariles/retrieval-service
-    newTag: v0.2.0
+- name: ghcr.io/leandroamariles/retrieval-service
+  newName: ghcr.io/leandroamariles/retrieval-service
+  newTag: v0.2.0
