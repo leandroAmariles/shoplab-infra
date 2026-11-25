@@ -70,6 +70,10 @@ en esa variable.
 
 El mismo `port-forward` sirve el ingress de la aplicación (`shoplab.localtest.me:8080` en `dev`).
 
+El ingress envía `/api` al `gateway` (`apps/gateway`, LAB-107) y `/` al `frontend`. El gateway reparte la API por
+prefijo; para mover una ruta a un servicio, añade `SHOPLAB_GATEWAY_ROUTES_<NOMBRE>_URI` al `configMapGenerator` de
+`apps/gateway/overlays/dev`. Si el gateway falla, revertir el cambio del ingress devuelve `/api` al `backend`.
+
 ## Tareas habituales
 
 ### Cambiar un valor de `dev` y revertirlo

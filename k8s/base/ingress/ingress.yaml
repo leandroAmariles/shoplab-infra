@@ -15,11 +15,13 @@ spec:
     - host: shoplab.invalid
       http:
         paths:
+          # Toda la API entra por el gateway (LAB-107, apps/gateway), que la reparte por prefijo. Para volver a
+          # enviarla directa al monolito, revertir este cambio.
           - path: /api
             pathType: Prefix
             backend:
               service:
-                name: backend
+                name: gateway
                 port:
                   name: http
           - path: /
