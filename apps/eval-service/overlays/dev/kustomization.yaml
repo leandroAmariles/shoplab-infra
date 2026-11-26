@@ -1,16 +1,15 @@
+# Dev of eval-service (LAB-130). `images:` is updated by the deploy job of shoplab-eval-service on every release;
+# the name must be the full image name or that job refuses to update it.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-resources:
-  - ../../base
-
 namespace: shoplab-dev
 
-replicas:
-  - name: eval-service
-    count: 1
+resources:
+- ../../base
+- networkpolicy.yaml
 
 images:
-  - name: eval-service
-    newName: ghcr.io/leandroamariles/eval-service
-    newTag: v1.0.0
+- name: ghcr.io/leandroamariles/eval-service
+  newName: ghcr.io/leandroamariles/eval-service
+  newTag: v0.1.0

@@ -1,9 +1,8 @@
+# Evaluation run history and admin-eval API service (LAB-130, ADR-0035).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: eval-service
-  labels:
-    app.kubernetes.io/name: eval-service
 spec:
   replicas: 1
   selector:
@@ -14,33 +13,46 @@ spec:
       labels:
         app.kubernetes.io/name: eval-service
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
       containers:
         - name: eval-service
-          image: ghcr.io/leandroamariles/eval-service:v1.0.0
-          imagePullPolicy: IfNotPresent
+          # The tag is set by the overlay; the deploy job of shoplab-eval-service updates it.
+          image: ghcr.io/leandroamariles/eval-service
           ports:
-            - containerPort: 8080
-              name: http
-          env:
-            - name: SPRING_PROFILES_ACTIVE
-              value: "dev"
-            - name: SPRING_APPLICATION_NAME
-              value: "eval-service"
-            - name: SPRING_DATASOURCE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: eval-service-db-secret
-                  key: SPRING_DATASOURCE_URL
-            - name: SPRING_DATASOURCE_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: eval-service-db-secret
-                  key: SPRING_DATASOURCE_USERNAME
-            - name: SPRING_DATASOURCE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: eval-service-db-secret
-                  key: SPRING_DATASOURCE_PASSWORD
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: eval-service-config
+            - secretRef:
+                name: eval-service-db
+            - secretRef:
+                name: eval-service-eval
+                optional: true
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 36
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
           resources:
             requests:
               cpu: 100m
@@ -48,15 +60,14 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
-          livenessProbe:
-            httpGet:
-              path: /actuator/health/liveness
-              port: 8080
-            initialDelaySeconds: 30
-            periodSeconds: 10
-          readinessProbe:
-            httpGet:
-              path: /actuator/health/readiness
-              port: 8080
-            initialDelaySeconds: 20
-            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

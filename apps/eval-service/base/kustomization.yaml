@@ -4,8 +4,21 @@ kind: Kustomization
 resources:
   - deployment.yaml
   - service.yaml
+  - servicemonitor.yaml
   - externalsecret.yaml
 
+# commonLabels, not labels: the Deployment selector cannot change after creation.
 commonLabels:
   app.kubernetes.io/name: eval-service
   app.kubernetes.io/part-of: shoplab
+
+configMapGenerator:
+  - name: eval-service-config
+    literals:
+      - MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED=true
+      - POSTGRES_URL=jdbc:postgresql://postgres:5432/eval
+      - POSTGRES_USER=eval
+      - SHOPLAB_CHAT_SETTINGS_CLIENT_BASE_URL=http://chat-service:8080
+      - SHOPLAB_CHAT_SETTINGS_CLIENT_TIMEOUT=5s
+      - SHOPLAB_EVAL_HISTORY_TRACE_URL_TEMPLATE=http://localhost:3001/trace/{traceId}
+      - LOGGING_LEVEL_ROOT=INFO

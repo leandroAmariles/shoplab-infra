@@ -1,0 +1,21 @@
+# As for chat-service and retrieval-service (LAB-84): from the Docker host it only reaches PostgreSQL, never Ollama.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eval-service-no-direct-ollama
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: eval-service
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [172.17.0.1/32]
+    - to:
+        - ipBlock:
+            cidr: 172.17.0.1/32
+      ports:
+        - port: 5432
+          protocol: TCP
