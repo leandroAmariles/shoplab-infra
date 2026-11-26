@@ -1,28 +1,7 @@
 # En dev Ollama corre en el Docker del host (ver ollama-host.yaml), no en un pod: una política de entrada sobre un pod
-# `ollama` no lo protege. Para que el gateway sea el único camino (LAB-84, FR-002), `backend` e `ingest` pueden salir a
+# `ollama` no lo protege. Para que el gateway sea el único camino (LAB-84, FR-002), `ingest` (como cada servicio en su overlay) puede salir a
 # cualquier destino MENOS al puerto de Ollama del host; al host solo llegan a Postgres (5432). `litellm` no tiene política
 # de salida, así que es el único que llega a Ollama.
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: backend-no-direct-ollama
-spec:
-  podSelector:
-    matchLabels:
-      app.kubernetes.io/name: backend
-  policyTypes: [Egress]
-  egress:
-    - to:
-        - ipBlock:
-            cidr: 0.0.0.0/0
-            except: [172.17.0.1/32]
-    - to:
-        - ipBlock:
-            cidr: 172.17.0.1/32
-      ports:
-        - port: 5432
-          protocol: TCP
----
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

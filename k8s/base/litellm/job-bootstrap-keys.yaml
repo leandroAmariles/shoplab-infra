@@ -42,11 +42,6 @@ spec:
                 secretKeyRef:
                   name: litellm-credentials
                   key: LITELLM_MASTER_KEY
-            - name: LITELLM_KEY_BACKEND
-              valueFrom:
-                secretKeyRef:
-                  name: litellm-credentials
-                  key: LITELLM_KEY_BACKEND
             # chat-service (LAB-59): modelos de conversación (chat, fallback y cloud condicional).
             - name: LITELLM_KEY_CHAT
               valueFrom:

@@ -2,29 +2,6 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend
-spec:
-  # The dev node has no spare CPU for a second backend (250m requested, 1930m allocatable): a surge pod stays Pending
-  # and the rollout never ends (LAB-129). The old pod goes first; one replica, so dev is briefly without backend.
-  strategy:
-    rollingUpdate:
-      maxSurge: 0
-      maxUnavailable: 1
-  template:
-    spec:
-      containers:
-        - name: backend
-          resources:
-            requests:
-              cpu: 250m
-              memory: 512Mi
-            limits:
-              cpu: "1"
-              memory: 768Mi
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
   name: frontend
 spec:
   template:

@@ -77,7 +77,7 @@ test-policies:
 test-ci-scripts:
 	@bash scripts/tests/ensure-secrets.test.sh
 
-# Reglas de alerta del backend (LAB-102): promtool check + test rules sobre la PrometheusRule renderizada.
+# Reglas de alerta de los servicios (LAB-102): promtool check + test rules sobre la PrometheusRule renderizada.
 prom-rules: kustomize
 	@bash scripts/prom-rules.sh
 

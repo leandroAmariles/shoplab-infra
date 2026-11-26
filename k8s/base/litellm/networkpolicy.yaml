@@ -1,6 +1,6 @@
-# Redes del gateway (LAB-84, FR-002 y FR-035): solo `backend`, `ingest` y el Job de claves llegan a `litellm`; solo `litellm`
+# Redes del gateway (LAB-84, FR-002 y FR-035): solo los servicios que llaman a modelos, `ingest` y el Job de claves llegan a `litellm`; solo `litellm`
 # llega a su Postgres y al pod de Ollama cuando Ollama corre en el clúster. El gateway no tiene Ingress.
-# En `dev` Ollama es externo (Docker del host): ahí la salida de `backend` e `ingest` hacia él se corta en el overlay.
+# En `dev` Ollama es externo (Docker del host): ahí la salida de esos pods hacia él se corta en el overlay.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -12,9 +12,6 @@ spec:
   policyTypes: [Ingress]
   ingress:
     - from:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/name: backend
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: ingest

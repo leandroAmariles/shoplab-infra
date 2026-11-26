@@ -249,7 +249,7 @@ run "enables_alertmanager_with_minimal_resources" {
 
   assert {
     condition     = yamldecode(helm_release.kube_prometheus_stack.values[0]).alertmanager.enabled == true
-    error_message = "Alertmanager debe estar activo: la alerta BackendDown (LAB-102) llega a él"
+    error_message = "Alertmanager debe estar activo: la alerta ServiceDown (LAB-102) llega a él"
   }
 
   assert {

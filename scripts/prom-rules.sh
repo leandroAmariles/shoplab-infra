@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Valida y prueba las reglas de alerta del backend (LAB-102). Extrae la PrometheusRule del overlay dev ya renderizado
+# Valida y prueba las reglas de alerta de los servicios (LAB-102). Extrae la PrometheusRule del overlay dev ya renderizado
 # por scripts/kustomize-build.sh (RENDER_DIR), la comprueba con `promtool check rules` y ejecuta las pruebas de
 # rules-tests/*.test.yaml con `promtool test rules`. Falla si el overlay no contiene ninguna PrometheusRule.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"

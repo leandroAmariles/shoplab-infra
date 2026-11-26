@@ -1,0 +1,32 @@
+# Alerta «servicio caído» (LAB-102; sustituye a BackendDown al retirar el monolito, LAB-130). `up == 0` cubre un
+# servicio que no responde; `absent(...)` cubre que su serie desaparezca (0 réplicas o Deployment borrado). Con
+# recogida y evaluación de 30 s y `for: 2m` salta en ~3 min. Se prueba con rules-tests/service-down.test.yaml.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: services
+  labels:
+    app.kubernetes.io/name: services
+spec:
+  groups:
+    - name: services
+      rules:
+        - alert: ServiceDown
+          expr: |
+            up{job=~"gateway|retrieval-service|chat-service|eval-service", namespace="shoplab-dev"} == 0
+            or
+            absent(up{job="gateway", namespace="shoplab-dev"})
+            or
+            absent(up{job="retrieval-service", namespace="shoplab-dev"})
+            or
+            absent(up{job="chat-service", namespace="shoplab-dev"})
+            or
+            absent(up{job="eval-service", namespace="shoplab-dev"})
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: Un servicio de ShopLab no responde
+            description: >-
+              Prometheus no recoge métricas de {{ $labels.job }} en shoplab-dev desde hace más de 2 minutos.
+              Revisa sus pods y el dashboard «ShopLab · Pods».

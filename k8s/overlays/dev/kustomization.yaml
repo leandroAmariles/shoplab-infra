@@ -1,5 +1,4 @@
-# Desde LAB-81 el despliegue continuo (job deploy de shoplab-helpdesk) fija en `images:` el `newTag` con la versión
-# vX.Y.Z de cada release (ADR-0012 de shoplab-helpdesk); no se edita a mano. Para volver atrás, revierte el commit de despliegue. Nunca latest.
+# `images:` fija versiones vX.Y.Z (ADR-0012 de shoplab-helpdesk; nunca latest). Para volver atrás, revierte el commit.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: shoplab-dev
@@ -14,59 +13,21 @@ labels:
 - pairs:
     app.kubernetes.io/environment: dev
 images:
-- name: ghcr.io/leandroamariles/backend
-  newName: ghcr.io/leandroamariles/backend
-  newTag: v0.31.0
 - name: ghcr.io/leandroamariles/frontend
   newName: ghcr.io/leandroamariles/frontend
   newTag: v0.26.0
 - name: ghcr.io/leandroamariles/ingest
   newName: ghcr.io/leandroamariles/ingest
   newTag: v0.26.0
-  # Trazas de LLM hacia el Langfuse del clúster (LAB-64); las claves vienen de backend-langfuse.
-  # Prompts del chat gestionados en el mismo Langfuse (LAB-85, ADR-0027 de shoplab-helpdesk): usan esas mismas claves, y el
-  # backend crea al arrancar los que no existen. Sin SHOPLAB_CHAT_PROMPTS_OVERRIDE_TOKEN: DEV no admite fijar versiones.
-  # LAB-59: eval reads active assistant settings from chat-service over HTTP.
-configMapGenerator:
-- behavior: merge
-  literals:
-  - SHOPLAB_CHAT_TRACING_ENABLED=true
-  - SHOPLAB_CHAT_TRACING_ENDPOINT=http://langfuse-web:3000/api/public/otel
-  - SHOPLAB_CHAT_TRACING_ENVIRONMENT=dev
-  - SHOPLAB_CHAT_PROMPTS_ENABLED=true
-  - SHOPLAB_CHAT_PROMPTS_BASE_URL=http://langfuse-web:3000
-  - SHOPLAB_CHAT_PROMPTS_PUBLISH_MISSING=true
-  - SHOPLAB_CHAT_SETTINGS_CLIENT_MODE=http
-  - SHOPLAB_CHAT_SETTINGS_CLIENT_BASE_URL=http://chat-service:8080
-  name: backend-config
 # Postgres corre en el Docker del host (ver postgres-host.yaml), con su volumen propio: los datos sobreviven a make down.
-# Se quitan el StatefulSet, su configuración y su ExternalSecret (el backend tiene el suyo), y el Service `postgres` pasa
+# Se quitan el StatefulSet, su configuración y su ExternalSecret, y el Service `postgres` pasa
 # a no tener selector para que lo sirva el EndpointSlice del host.
 # Ollama corre en el Docker del host (ver ollama-host.yaml): se quitan el StatefulSet y su configuración, y el Service
 # `ollama` pasa a no tener selector para que lo sirva el EndpointSlice del host.
-# Langfuse (LAB-64): los secretos salen de /shoplab/dev/langfuse. `langfuse-credentials` usa dataFrom (sin /spec/data) y
-# `backend-langfuse` lee dos propiedades del mismo JSON.
-# Gateway de modelos (LAB-84): los secretos salen de /shoplab/dev/litellm. `litellm-credentials` usa dataFrom y
-# `backend-litellm` lee la clave virtual del backend del mismo JSON.
-# Historial de evaluación (LAB-31): los secretos salen de /shoplab/dev/eval; `backend-eval` lee el token con el que `eval/`
-# guarda cada ejecución (opcional: el backend arranca sin él y rechaza guardar).
+# Langfuse (LAB-64): los secretos salen de /shoplab/dev/langfuse. `langfuse-credentials` usa dataFrom (sin /spec/data).
+# Gateway de modelos (LAB-84): los secretos salen de /shoplab/dev/litellm. `litellm-credentials` usa dataFrom.
 patches:
 - path: patches/resources.yaml
-# LAB-130, ventana de corte: sin token el monolito rechaza guardar (403) y sigue sirviendo el historial. El guardado se
-# reanuda en eval-service al mover /api/eval/** en el gateway. Para volver al monolito, quitar este parche.
-- patch: |-
-    apiVersion: apps/v1
-    kind: Deployment
-    metadata:
-      name: backend
-    spec:
-      template:
-        spec:
-          containers:
-            - name: backend
-              env:
-                - name: SHOPLAB_EVAL_PERSISTENCE_TOKEN
-                  value: ""
 - patch: |-
     - op: replace
       path: /spec/rules/0/host
@@ -130,13 +91,6 @@ patches:
     name: ollama
 - patch: |-
     - op: replace
-      path: /spec/data/0/remoteRef/key
-      value: /shoplab/dev/postgres-password
-  target:
-    kind: ExternalSecret
-    name: backend-credentials
-- patch: |-
-    - op: replace
       path: /spec/dataFrom/0/extract/key
       value: /shoplab/dev/langfuse
   target:
@@ -144,32 +98,8 @@ patches:
     name: langfuse-credentials
 - patch: |-
     - op: replace
-      path: /spec/data/0/remoteRef/key
-      value: /shoplab/dev/langfuse
-    - op: replace
-      path: /spec/data/1/remoteRef/key
-      value: /shoplab/dev/langfuse
-  target:
-    kind: ExternalSecret
-    name: backend-langfuse
-- patch: |-
-    - op: replace
       path: /spec/dataFrom/0/extract/key
       value: /shoplab/dev/litellm
   target:
     kind: ExternalSecret
     name: litellm-credentials
-- patch: |-
-    - op: replace
-      path: /spec/data/0/remoteRef/key
-      value: /shoplab/dev/litellm
-  target:
-    kind: ExternalSecret
-    name: backend-litellm
-- patch: |-
-    - op: replace
-      path: /spec/data/0/remoteRef/key
-      value: /shoplab/dev/eval
-  target:
-    kind: ExternalSecret
-    name: backend-eval

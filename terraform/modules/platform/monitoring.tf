@@ -8,7 +8,7 @@ resource "helm_release" "kube_prometheus_stack" {
 
   # Pila base reducida para una máquina de desarrollo.
   values = [yamlencode({
-    # Alertmanager recibe la alerta BackendDown (LAB-102). Sin almacenamiento: el k3s de Floci no trae StorageClass, así
+    # Alertmanager recibe la alerta ServiceDown (LAB-102). Sin almacenamiento: el k3s de Floci no trae StorageClass, así
     # que un PVC dejaría el pod en Pending; las alertas silenciadas se pierden al reiniciar, aceptable en el laboratorio.
     alertmanager = {
       enabled = true
