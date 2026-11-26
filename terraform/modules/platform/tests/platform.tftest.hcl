@@ -287,6 +287,13 @@ run "installs_a_default_storage_class_provisioner" {
     condition     = helm_release.local_path_storage.namespace == "local-path-storage"
     error_message = "local-path-provisioner debe vivir en su propio namespace"
   }
+
+  # /var/lib/rancher/k3s es el único directorio del nodo respaldado por un volumen de Docker: fuera de él, los datos de
+  # los PVC se pierden cuando Floci recrea el contenedor de k3s.
+  assert {
+    condition     = startswith(yamldecode(file("${path.module}/charts/local-path-storage/values.yaml")).nodePath, "/var/lib/rancher/k3s/")
+    error_message = "Los volúmenes deben crearse bajo /var/lib/rancher/k3s para sobrevivir a la recreación del nodo"
+  }
 }
 
 run "sets_a_fixed_argocd_admin_password_hash" {
