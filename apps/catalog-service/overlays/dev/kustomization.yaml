@@ -5,23 +5,23 @@ kind: Kustomization
 namespace: shoplab-dev
 
 resources:
-  - ../../base
-  - networkpolicy.yaml
+- ../../base
+- networkpolicy.yaml
 
 patches:
-  - target:
-      kind: Deployment
-      name: catalog-service
-    patch: |-
-      - op: add
-        path: /spec/strategy
-        value:
-          type: RollingUpdate
-          rollingUpdate:
-            maxSurge: 0
-            maxUnavailable: 1
+- patch: |-
+    - op: add
+      path: /spec/strategy
+      value:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 0
+          maxUnavailable: 1
+  target:
+    kind: Deployment
+    name: catalog-service
 
 images:
-  - name: ghcr.io/leandroamariles/catalog-service
-    newName: ghcr.io/leandroamariles/catalog-service
-    newTag: v0.1.0
+- name: ghcr.io/leandroamariles/catalog-service
+  newName: ghcr.io/leandroamariles/catalog-service
+  newTag: v0.1.0
