@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Carga el corpus de la base de conocimiento (data/kb/*.md de shoplab-helpdesk) en el entorno levantado, subiendo cada
 # documento a POST /api/documents (que lo trocea, calcula los embeddings y lo guarda). Es idempotente:
-# volver a subir un documento lo reemplaza. Hay que repetirlo tras cada make up, porque make down borra la base.
+# volver a subir un documento lo reemplaza. Hay que repetirlo tras cada make up, porque make destroy borra la base.
 #   KB_DIR        carpeta con los .md (por defecto ../shoplab-helpdesk/data/kb)
 #   INGRESS_PORT  puerto del ingress en el host (por defecto 8080; el mismo que usa forward.sh)
 #   SEED_TIMEOUT  segundos máximos por documento (por defecto 300: los embeddings corren en CPU)

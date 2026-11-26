@@ -11,7 +11,7 @@ if [ -z "${CLUSTER_MODE:-}" ] && [ -f "$ENV_DIR/.cluster-mode" ]; then
 fi
 CLUSTER_MODE="${CLUSTER_MODE:-floci}"
 
-if curl -fsS "$EMULATOR_URL/_localstack/health" >/dev/null 2>&1; then
+if curl -fsS -m 5 "$EMULATOR_URL/_localstack/health" >/dev/null 2>&1; then
   # Sin bucket de estado no hay nada desplegado (p. ej. un down repetido): se omite el destroy del entorno.
   if [ -d "$ENV_DIR/.terraform" ] \
     && curl -sI "$EMULATOR_URL/shoplab-tfstate-$ENV_NAME" | head -n 1 | grep -q ' 200'; then
@@ -34,10 +34,12 @@ else
 fi
 
 log "apagando Floci"
-docker compose -f "$ROOT/docker-compose.yml" down --remove-orphans
+docker compose -f "$ROOT/docker-compose.yml" down --volumes --remove-orphans
 
 # Floci crea contenedores y redes fuera de compose (registro ECR, k3s, VPC): docker compose down no los borra.
 docker ps -aq --filter 'name=^floci-aws-' | xargs -r docker rm -f >/dev/null
+# El volumen del k3s guarda el clúster entero: si quedara, el siguiente make up encontraría sus releases sin estado.
+docker volume ls -q --filter "name=^floci-aws-eks-shoplab-$ENV_NAME$" | xargs -r docker volume rm >/dev/null
 docker network ls --format '{{.Name}}' | grep -E '^(floci-aws-|shoplab-infra_default$)' | xargs -r docker network rm >/dev/null || true
 
 # Clúster de kind del modo de respaldo, si algo impidió que terraform destroy lo eliminara.

@@ -14,8 +14,12 @@ services:
       # Floci solo levanta su consola como sidecar la primera vez que alguien abre /_floci/ui, y ese contenedor muere con
       # él: tras cada recreación el puerto 4500 quedaba vacío. Se desactiva y la consola corre como servicio de compose.
       FLOCI_SERVICES_UI_ENABLED: "false"
+      # La imagen guarda todo en memoria por defecto: al apagar Floci se perdían el estado de Terraform y los secretos.
+      FLOCI_STORAGE_MODE: persistent
+      FLOCI_STORAGE_PERSISTENT_PATH: /app/data
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - floci-data:/app/data
 
   # Consola web de Floci, siempre arriba junto al emulador (http://localhost:4500). Misma imagen que usaría el sidecar.
   floci-ui:
@@ -29,3 +33,6 @@ services:
     depends_on:
       - floci
     restart: unless-stopped
+
+volumes:
+  floci-data:

@@ -7,7 +7,7 @@ con un EKS local, ingress-nginx, External Secrets Operator, Argo CD y kube-prome
 - Guía: `docs/terraform-local.md`
 - Especificación: `specs/LAB-98-terraform-floci-eks/` en el repositorio `shoplab-helpdesk`
 
-Uso previsto: `make up` levanta todo de cero; `make down` lo borra.
+Uso previsto: `make up` crea o reanuda el entorno; `make down` lo detiene sin borrar volúmenes; `make destroy` lo borra.
 
 ## Pipeline de CI (LAB-99)
 
