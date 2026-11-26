@@ -35,6 +35,9 @@ configMapGenerator:
   - SHOPLAB_CHAT_PROMPTS_ENABLED=true
   - SHOPLAB_CHAT_PROMPTS_BASE_URL=http://langfuse-web:3000
   - SHOPLAB_CHAT_PROMPTS_PUBLISH_MISSING=true
+  # LAB-59: eval reads active assistant settings from chat-service over HTTP.
+  - SHOPLAB_CHAT_SETTINGS_CLIENT_MODE=http
+  - SHOPLAB_CHAT_SETTINGS_CLIENT_BASE_URL=http://chat-service:8080
   name: backend-config
 # Postgres corre en el Docker del host (ver postgres-host.yaml), con su volumen propio: los datos sobreviven a make down.
 # Se quitan el StatefulSet, su configuración y su ExternalSecret (el backend tiene el suyo), y el Service `postgres` pasa
