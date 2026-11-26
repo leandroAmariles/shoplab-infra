@@ -16,7 +16,7 @@ labels:
 images:
 - name: ghcr.io/leandroamariles/backend
   newName: ghcr.io/leandroamariles/backend
-  newTag: v0.30.0
+  newTag: v0.31.0
 - name: ghcr.io/leandroamariles/frontend
   newName: ghcr.io/leandroamariles/frontend
   newTag: v0.26.0
@@ -26,6 +26,7 @@ images:
   # Trazas de LLM hacia el Langfuse del clúster (LAB-64); las claves vienen de backend-langfuse.
   # Prompts del chat gestionados en el mismo Langfuse (LAB-85, ADR-0027 de shoplab-helpdesk): usan esas mismas claves, y el
   # backend crea al arrancar los que no existen. Sin SHOPLAB_CHAT_PROMPTS_OVERRIDE_TOKEN: DEV no admite fijar versiones.
+  # LAB-59: eval reads active assistant settings from chat-service over HTTP.
 configMapGenerator:
 - behavior: merge
   literals:
@@ -35,7 +36,6 @@ configMapGenerator:
   - SHOPLAB_CHAT_PROMPTS_ENABLED=true
   - SHOPLAB_CHAT_PROMPTS_BASE_URL=http://langfuse-web:3000
   - SHOPLAB_CHAT_PROMPTS_PUBLISH_MISSING=true
-  # LAB-59: eval reads active assistant settings from chat-service over HTTP.
   - SHOPLAB_CHAT_SETTINGS_CLIENT_MODE=http
   - SHOPLAB_CHAT_SETTINGS_CLIENT_BASE_URL=http://chat-service:8080
   name: backend-config
