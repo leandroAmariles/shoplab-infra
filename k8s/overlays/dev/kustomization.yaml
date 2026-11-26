@@ -26,8 +26,6 @@ images:
   # Trazas de LLM hacia el Langfuse del clúster (LAB-64); las claves vienen de backend-langfuse.
   # Prompts del chat gestionados en el mismo Langfuse (LAB-85, ADR-0027 de shoplab-helpdesk): usan esas mismas claves, y el
   # backend crea al arrancar los que no existen. Sin SHOPLAB_CHAT_PROMPTS_OVERRIDE_TOKEN: DEV no admite fijar versiones.
-  # LAB-129 cutover, together with the gateway routes (apps/gateway): the chat asks retrieval-service, and the module
-  # of the monolith stops indexing. Reverting this commit sends everything back.
 configMapGenerator:
 - behavior: merge
   literals:
@@ -37,9 +35,6 @@ configMapGenerator:
   - SHOPLAB_CHAT_PROMPTS_ENABLED=true
   - SHOPLAB_CHAT_PROMPTS_BASE_URL=http://langfuse-web:3000
   - SHOPLAB_CHAT_PROMPTS_PUBLISH_MISSING=true
-  - SHOPLAB_RETRIEVAL_CLIENT_MODE=http
-  - SHOPLAB_RETRIEVAL_CLIENT_BASE_URL=http://retrieval-service:8080
-  - SHOPLAB_RETRIEVAL_EMBEDDING_AUTO_INDEX=false
   name: backend-config
 # Postgres corre en el Docker del host (ver postgres-host.yaml), con su volumen propio: los datos sobreviven a make down.
 # Se quitan el StatefulSet, su configuración y su ExternalSecret (el backend tiene el suyo), y el Service `postgres` pasa
