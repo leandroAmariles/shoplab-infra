@@ -3,24 +3,31 @@
 # salen de versions.env, la misma fuente que usa el workflow (LAB-99): `make check` reproduce lo que corre en CI.
 include versions.env
 
-.PHONY: up down forward seed secrets quality bootstrap test test-integration scan \
+.PHONY: up down stop destroy forward seed secrets quality bootstrap test test-integration scan \
 	check check-tools fmt-check validate lint pins tf-test kustomize policies test-policies prom-rules test-ci-scripts trivy plan smoke
 
 bootstrap:
 	@bash scripts/bootstrap.sh
 	@bash scripts/init-env.sh
 
+# Crea el entorno o reanuda el que `make down` dejó detenido, y abre los túneles.
 up:
 	@bash scripts/up.sh
 
-down:
+# Detiene túneles y contenedores sin borrar volúmenes. shoplab-helpdesk llama a `stop`: en una versión sin este target
+# falla, en lugar de ejecutar el antiguo `down`, que borraba el entorno.
+down stop:
+	@bash scripts/stop.sh
+
+# Borra el entorno: terraform destroy, contenedores, redes y el volumen de Floci.
+destroy:
 	@bash scripts/down.sh
 
 # Expone el ingress en el host (port-forward en segundo plano); make up ya lo hace.
 forward:
 	@bash scripts/forward.sh
 
-# Carga data/kb/*.md de shoplab-helpdesk en la base de conocimiento (POST /api/documents). make down borra la base: repetir tras make up.
+# Carga data/kb/*.md de shoplab-helpdesk en la base de conocimiento (POST /api/documents). make destroy borra la base: repetir tras volver a crearlo.
 seed:
 	@bash scripts/seed.sh
 

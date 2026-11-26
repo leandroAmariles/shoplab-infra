@@ -90,6 +90,6 @@ Cárgalo desde `terraform/envs/dev/secrets.auto.tfvars` (no versionado; el ejemp
 
 ### Qué se conserva
 
-Los datos viven en PVC `local-path` del nodo: sobreviven a reinicios de los pods, **no** a `make down`/`destroy` del clúster.
-Tras `make down && make up` Langfuse vuelve sin pasos manuales (organización, proyecto y claves los crea `LANGFUSE_INIT_*`),
+Los datos viven en PVC `local-path` del nodo: sobreviven a reinicios de los pods, y a `make down`, **no** a `make destroy`.
+Tras `make destroy && make up` Langfuse vuelve sin pasos manuales (organización, proyecto y claves los crea `LANGFUSE_INIT_*`),
 pero sin las trazas anteriores.

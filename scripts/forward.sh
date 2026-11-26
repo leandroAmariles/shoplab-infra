@@ -64,9 +64,20 @@ wait_tcp() {
 
 failed=""
 forward() { # nombre namespace servicio puerto-local puerto-servicio host-para-probar ("tcp" = sin HTTP)
-  start_forward "$2" "$3" "$4:$5"
-  if [ "${6:-}" = tcp ]; then wait_tcp "$4"; else wait_http "$4" "${6:-localhost}"; fi \
-    && printf -v "st_$1" ok || { printf -v "st_$1" FALLO; failed="$failed $1 ($4)"; }
+  # Tras reanudar el clúster un pod puede seguir reiniciando y el túnel muere en la primera petición: se reintenta.
+  local attempt
+  for attempt in 1 2 3 4; do
+    start_forward "$2" "$3" "$4:$5"
+    if if_up "$4" "${6:-localhost}"; then printf -v "st_$1" ok; return 0; fi
+    kill "$!" >/dev/null 2>&1 || true
+    [ "$attempt" -eq 4 ] || sleep 15
+  done
+  printf -v "st_$1" FALLO
+  failed="$failed $1 ($4)"
+}
+
+if_up() { # puerto host ("tcp" = sin HTTP)
+  if [ "$2" = tcp ]; then wait_tcp "$1"; else wait_http "$1" "$2"; fi
 }
 
 forward ingress ingress-nginx ingress-nginx-controller "$INGRESS_PORT" 80 argocd.localtest.me
@@ -111,7 +122,7 @@ cat >&2 <<SUMMARY
   $(mark console)  Floci (consola) http://localhost:4500
   $(mark postgres)  Postgres       $pg_where
                                  contraseña: $pg_pass
-  Detener los túneles: make down (o bash scripts/forward.sh stop). Relanzarlos: make forward
+  Detener los túneles: bash scripts/forward.sh stop (o make down, que detiene el entorno). Relanzarlos: make forward
 SUMMARY
 
 if [ -n "$failed" ]; then

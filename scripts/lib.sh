@@ -27,7 +27,8 @@ use_placeholder_secrets_if_missing() {
 # Espera a que Floci responda; falla con un mensaje claro si no lo hace.
 wait_for_emulator() {
   local tries=60
-  until curl -fsS "$EMULATOR_URL/_localstack/health" >/dev/null 2>&1; do
+  # Con límite de tiempo: un puerto que acepta la conexión y no responde dejaba el script esperando para siempre.
+  until curl -fsS -m 5 "$EMULATOR_URL/_localstack/health" >/dev/null 2>&1; do
     tries=$((tries - 1))
     [ "$tries" -gt 0 ] || die "Floci no responde en $EMULATOR_URL (¿puerto 4566 ocupado o contenedor caído?)"
     sleep 2

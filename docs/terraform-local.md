@@ -65,13 +65,22 @@ No hace falta ninguna credencial de AWS: las que usa el proveedor son ficticias 
    sincroniza `shoplab-root` y, a través de ella, la `Application` de `dev`; el flujo completo está en
    [`gitops.md`](gitops.md).
 
-5. Borra todo:
+5. Detén el entorno sin perder nada:
 
    ```bash
-   make down        # o: bash scripts/down.sh
+   make down        # o: bash scripts/stop.sh
    ```
 
-   Ejecuta `terraform destroy`, destruye el bucket de estado, apaga Floci y elimina los contenedores y redes que
+   Cierra los túneles y detiene Floci, el clúster y el registro. El estado de Terraform, los secretos y los datos quedan
+   en volúmenes de Docker (Floci usa `FLOCI_STORAGE_MODE=persistent`); `make up` lo reanuda.
+
+6. Borra todo:
+
+   ```bash
+   make destroy     # o: bash scripts/down.sh
+   ```
+
+   Ejecuta `terraform destroy`, destruye el bucket de estado, apaga Floci, borra su volumen y elimina los contenedores y redes que
    Floci crea fuera de compose (`floci-aws-*`). Termina con `scripts/verify-clean.sh`.
 
 ## Secretos y parámetros
@@ -117,12 +126,12 @@ ambiente `itest` de `make test-integration`. Para añadir otro ambiente, ver el 
 Hasta LAB-101 el entorno raíz se llamaba `local` (clúster `shoplab-local`, bucket `shoplab-tfstate-local`). El cambio de
 nombre no se migra: el estado vive en un Floci desechable. Si tenías ese entorno levantado:
 
-1. Antes de actualizar el repositorio, destrúyelo con la versión anterior: `make down` (o, si no responde,
+1. Antes de actualizar el repositorio, destrúyelo con la versión anterior: `make down` (que entonces borraba; o, si no responde,
    `docker compose down -v --remove-orphans`). Termina con `bash scripts/verify-clean.sh`.
 2. Actualiza el repositorio. Copia `secrets.auto.tfvars` de `terraform/envs/local/` a `terraform/envs/dev/` (el archivo está
    ignorado por git y `git pull` no lo mueve; si falta, créalo desde `secrets.auto.tfvars.example`).
 3. Levanta de nuevo con `make up`. Se pierden los datos del clúster anterior (Postgres y modelos de Ollama), igual que
-   con cualquier `make down`.
+   con cualquier `make destroy`.
 
 ## Modo de respaldo con kind
 
@@ -141,9 +150,9 @@ En este modo no se crea ningún clúster EKS emulado. En modo por defecto (`floc
 | --- | --- |
 | `Floci no responde en http://localhost:4566` | El contenedor no arrancó o el puerto 4566 está ocupado por otro emulador. Revisa `docker ps` y detén el otro proceso. |
 | `Error acquiring the state lock` | Hay otra operación sobre el mismo estado. Espera a que termine. Si quedó huérfano tras un fallo: `terraform -chdir=terraform/envs/dev force-unlock <ID>` con el ID que muestra el error. |
-| Floci se reinició y perdió su contenido | El estado remoto referencia recursos que ya no existen. Ejecuta `make down` (limpia contenedores aunque Floci no responda) y vuelve a `make up`. |
+| Floci se reinició y perdió su contenido | Solo si se borró su volumen o es anterior al almacenamiento persistente: el estado ya no coincide. Impórtalo (`terraform import`) para conservar el clúster, o `make destroy` y `make up` para empezar de cero. |
 | Pods con `Permission denied` en su volumen y PV bajo `/opt/local-path-provisioner` | El PV es anterior al cambio de ruta y su contenido se perdió al recrearse el nodo; la ruta de un PV no se puede editar. Ver «Mover PVC antiguos al volumen del nodo». |
-| `make down` falla a medias | Es reintentable: vuelve a ejecutarlo; el error indica el recurso que falló. |
+| `make destroy` falla a medias | Es reintentable: vuelve a ejecutarlo; el error indica el recurso que falló. |
 | Pods de External Secrets no llegan a Floci | Los pods de k3s no resuelven nombres de contenedor ni `host.docker.internal`; el entorno usa la IP de Floci en la red de compose (`scripts/floci-ip.sh`). |
 | `node-exporter` ausente | Se desactiva a propósito: falla con `CreateContainerError` en k3s dentro de Docker. |
 | ingress-nginx | Su proyecto está en retiro; la última versión del chart es la 4.15.1. Es aceptable en un laboratorio local. |

@@ -30,6 +30,27 @@ log "levantando Floci"
 docker compose -f "$ROOT/docker-compose.yml" up -d
 wait_for_emulator
 
+# Tras `make down` quedan el volumen del clúster y su registro en Floci, no el contenedor.
+resume_cluster() {
+  local container="floci-aws-eks-shoplab-$ENV_NAME" kubeconfig="$ENV_DIR/kubeconfig.yaml"
+  [ -f "$kubeconfig" ] && command -v kubectl >/dev/null && docker volume inspect "$container" >/dev/null 2>&1 || return 0
+
+  # Floci recrea el contenedor desde el volumen al recibir la primera consulta de EKS, no al arrancar.
+  log "reanudando el clúster existente"
+  curl -s -m 30 -H "Authorization: AWS4-HMAC-SHA256 Credential=test/20260101/us-east-1/eks/aws4_request, SignedHeaders=host, Signature=x" \
+    "$EMULATOR_URL/clusters/shoplab-$ENV_NAME" >/dev/null || true
+  local ready=""
+  for _ in $(seq 1 60); do
+    if kubectl --kubeconfig "$kubeconfig" get --raw /readyz --request-timeout=5s >/dev/null 2>&1; then ready=1; break; fi
+    sleep 5
+  done
+  [ -n "$ready" ] || log "AVISO: la API del clúster aún no responde; si el apply falla, repite make up"
+
+  # El contenedor recreado queda solo en la red de la VPC: sin la de compose, los pods no llegan a Floci (External Secrets).
+  docker network connect shoplab-infra_default "$container" >/dev/null 2>&1 || true
+}
+resume_cluster
+
 bash "$ROOT/scripts/bootstrap.sh"
 bash "$ROOT/scripts/init-env.sh"
 
