@@ -52,6 +52,21 @@ configMapGenerator:
 # guarda cada ejecución (opcional: el backend arranca sin él y rechaza guardar).
 patches:
 - path: patches/resources.yaml
+# LAB-130, ventana de corte: sin token el monolito rechaza guardar (403) y sigue sirviendo el historial. El guardado se
+# reanuda en eval-service al mover /api/eval/** en el gateway. Para volver al monolito, quitar este parche.
+- patch: |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: backend
+    spec:
+      template:
+        spec:
+          containers:
+            - name: backend
+              env:
+                - name: SHOPLAB_EVAL_PERSISTENCE_TOKEN
+                  value: ""
 - patch: |-
     - op: replace
       path: /spec/rules/0/host
