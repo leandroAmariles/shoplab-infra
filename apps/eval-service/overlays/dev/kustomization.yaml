@@ -9,6 +9,24 @@ resources:
 - ../../base
 - networkpolicy.yaml
 
+# LAB-130: with 100m this service took the CPU ClickHouse needed on the dev node (1930m allocatable). The old pod goes
+# first, so a rollout never needs room for two.
+patches:
+- target:
+    kind: Deployment
+    name: eval-service
+  patch: |-
+    - op: add
+      path: /spec/strategy
+      value:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 0
+          maxUnavailable: 1
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/requests/cpu
+      value: 25m
+
 images:
 - name: ghcr.io/leandroamariles/eval-service
   newName: ghcr.io/leandroamariles/eval-service
