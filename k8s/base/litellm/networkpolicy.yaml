@@ -18,6 +18,10 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: ingest
+        # chat-service (LAB-59): sin esta entrada el chat no llega al gateway de modelos.
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: chat-service
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: retrieval-service
