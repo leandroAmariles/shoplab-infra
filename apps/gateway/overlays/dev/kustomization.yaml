@@ -20,6 +20,9 @@ configMapGenerator:
   - SHOPLAB_GATEWAY_ROUTES_ASSISTANT_URI=http://chat-service:8080
   # LAB-130: the evaluation history is served by eval-service. Revert this commit to go back to the monolith.
   - SHOPLAB_GATEWAY_ROUTES_EVAL_URI=http://eval-service:8080
+  # LAB-113: the catalog is served by catalog-service.
+  - SHOPLAB_GATEWAY_ROUTES_CATALOG_PREFIX=/api/catalog
+  - SHOPLAB_GATEWAY_ROUTES_CATALOG_URI=http://catalog-service:8080
   name: gateway-config
 
 # LAB-130: el nodo de dev no tiene CPU libre (1930m asignables). Con 100m de petición ClickHouse no cabía y un rollout
