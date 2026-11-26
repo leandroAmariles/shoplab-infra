@@ -13,7 +13,7 @@ spec:
       rules:
         - alert: ServiceDown
           expr: |
-            up{job=~"gateway|retrieval-service|chat-service|eval-service", namespace="shoplab-dev"} == 0
+            up{job=~"gateway|retrieval-service|chat-service|eval-service|catalog-service", namespace="shoplab-dev"} == 0
             or
             absent(up{job="gateway", namespace="shoplab-dev"})
             or
@@ -22,6 +22,8 @@ spec:
             absent(up{job="chat-service", namespace="shoplab-dev"})
             or
             absent(up{job="eval-service", namespace="shoplab-dev"})
+            or
+            absent(up{job="catalog-service", namespace="shoplab-dev"})
           for: 2m
           labels:
             severity: critical

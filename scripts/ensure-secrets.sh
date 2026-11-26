@@ -51,6 +51,8 @@ if [ -n "${TF_VAR_secrets:-}" ]; then
     || log "aviso: TF_VAR_secrets no trae chat-db-password: chat-service no podrá conectar a su base"
   [[ "$flat" == *"eval-db-password"* ]] \
     || log "aviso: TF_VAR_secrets no trae eval-db-password: eval-service no podrá conectar a su base"
+  [[ "$flat" == *"catalog-db-password"* ]] \
+    || log "aviso: TF_VAR_secrets no trae catalog-db-password: catalog-service no podrá conectar a su base"
   log "TF_VAR_secrets trae todas las claves; no se modifica ningún archivo"
   exit 0
 fi
@@ -96,6 +98,8 @@ printf '%s\n' "${lines[@]}" | grep -Eq '^[[:space:]]*chat-db-password[[:space:]]
   || log "aviso: falta chat-db-password en $(basename "$FILE") (la de CHAT_DB_PASSWORD): chat-service no podrá conectar"
 printf '%s\n' "${lines[@]}" | grep -Eq '^[[:space:]]*eval-db-password[[:space:]]*=' \
   || log "aviso: falta eval-db-password en $(basename "$FILE") (la de EVAL_DB_PASSWORD): eval-service no podrá conectar"
+printf '%s\n' "${lines[@]}" | grep -Eq '^[[:space:]]*catalog-db-password[[:space:]]*=' \
+  || log "aviso: falta catalog-db-password en $(basename "$FILE") (la de CATALOG_DB_PASSWORD): catalog-service no podrá conectar"
 
 ADDED=()
 NEW_LINE=""

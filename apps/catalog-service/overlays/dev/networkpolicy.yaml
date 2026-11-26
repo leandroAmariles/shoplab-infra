@@ -1,0 +1,49 @@
+# Egress as for the other services (LAB-84): from the Docker host it only reaches PostgreSQL, never Ollama.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: catalog-service-no-direct-ollama
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: catalog-service
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [172.17.0.1/32]
+    - to:
+        - ipBlock:
+            cidr: 172.17.0.1/32
+      ports:
+        - port: 5432
+          protocol: TCP
+---
+# LAB-113: only the gateway, the two consumers of the catalog and Prometheus reach port 8080.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: catalog-service-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: catalog-service
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: retrieval-service
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: chat-service
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - port: 8080
+          protocol: TCP

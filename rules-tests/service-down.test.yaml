@@ -1,4 +1,4 @@
-# Pruebas de la alerta ServiceDown (LAB-102, LAB-130). scripts/prom-rules.sh extrae la regla renderizada a rules.yaml y
+# Pruebas de la alerta ServiceDown (LAB-102, LAB-130, LAB-113). scripts/prom-rules.sh extrae la regla renderizada a rules.yaml y
 # ejecuta `promtool test rules`.
 rule_files:
   - rules.yaml
@@ -17,6 +17,8 @@ tests:
         values: '1x12'
       - series: 'up{job="eval-service",namespace="shoplab-dev",instance="eval-service:8080"}'
         values: '0x12'
+      - series: 'up{job="catalog-service",namespace="shoplab-dev",instance="catalog-service:8080"}'
+        values: '1x12'
     alert_rule_test:
       - eval_time: 1m
         alertname: ServiceDown
@@ -42,6 +44,8 @@ tests:
       - series: 'up{job="retrieval-service",namespace="shoplab-dev",instance="retrieval-service:8080"}'
         values: '1x12'
       - series: 'up{job="eval-service",namespace="shoplab-dev",instance="eval-service:8080"}'
+        values: '1x12'
+      - series: 'up{job="catalog-service",namespace="shoplab-dev",instance="catalog-service:8080"}'
         values: '1x12'
     alert_rule_test:
       - eval_time: 1m
@@ -70,6 +74,8 @@ tests:
         values: '1x12'
       - series: 'up{job="eval-service",namespace="shoplab-dev",instance="eval-service:8080"}'
         values: '1x12'
+      - series: 'up{job="catalog-service",namespace="shoplab-dev",instance="catalog-service:8080"}'
+        values: '1x12'
     alert_rule_test:
       - eval_time: 3m
         alertname: ServiceDown
@@ -89,6 +95,8 @@ tests:
         values: '1x12'
       - series: 'up{job="eval-service",namespace="shoplab-dev",instance="eval-service:8080"}'
         values: '1x12'
+      - series: 'up{job="catalog-service",namespace="shoplab-dev",instance="catalog-service:8080"}'
+        values: '1x12'
     alert_rule_test:
       - eval_time: 3m
         alertname: ServiceDown
@@ -107,6 +115,8 @@ tests:
       - series: 'up{job="chat-service",namespace="shoplab-dev",instance="chat-service:8080"}'
         values: '1x12'
       - series: 'up{job="eval-service",namespace="shoplab-dev",instance="eval-service:8080"}'
+        values: '1x12'
+      - series: 'up{job="catalog-service",namespace="shoplab-dev",instance="catalog-service:8080"}'
         values: '1x12'
       - series: 'up{job="eval-service",namespace="otro",instance="eval-service:8080"}'
         values: '0x12'
