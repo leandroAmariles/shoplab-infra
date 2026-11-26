@@ -9,8 +9,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 FILE="${SECRETS_FILE:-$ENV_DIR/secrets.auto.tfvars}"
 LANGFUSE_KEYS=(POSTGRES_PASSWORD CLICKHOUSE_PASSWORD REDIS_AUTH MINIO_ROOT_PASSWORD SALT ENCRYPTION_KEY NEXTAUTH_SECRET
   LANGFUSE_INIT_PROJECT_PUBLIC_KEY LANGFUSE_INIT_PROJECT_SECRET_KEY LANGFUSE_INIT_USER_PASSWORD)
-LITELLM_KEYS=(LITELLM_MASTER_KEY LITELLM_KEY_BACKEND LITELLM_KEY_INGEST LITELLM_KEY_EVAL LITELLM_KEY_RETRIEVAL
-  POSTGRES_PASSWORD)
+LITELLM_KEYS=(LITELLM_MASTER_KEY LITELLM_KEY_BACKEND LITELLM_KEY_CHAT LITELLM_KEY_INGEST LITELLM_KEY_EVAL
+  LITELLM_KEY_RETRIEVAL POSTGRES_PASSWORD)
 # Opcional (LAB-31): sin él el backend no acepta guardar ejecuciones y todo lo demás funciona igual.
 EVAL_KEYS=(EVAL_PERSISTENCE_TOKEN)
 
@@ -47,6 +47,8 @@ if [ -n "${TF_VAR_secrets:-}" ]; then
     || log "aviso: TF_VAR_secrets no trae eval.EVAL_PERSISTENCE_TOKEN: el backend no aceptará guardar ejecuciones de evaluación (es opcional)"
   [[ "$flat" == *"retrieval-db-password"* ]] \
     || log "aviso: TF_VAR_secrets no trae retrieval-db-password: retrieval-service no podrá conectar a su base"
+  [[ "$flat" == *"chat-db-password"* ]] \
+    || log "aviso: TF_VAR_secrets no trae chat-db-password: chat-service no podrá conectar a su base"
   log "TF_VAR_secrets trae todas las claves; no se modifica ningún archivo"
   exit 0
 fi
@@ -88,6 +90,8 @@ done
 # se avisa: sin él todo lo demás funciona.
 printf '%s\n' "${lines[@]}" | grep -Eq '^[[:space:]]*retrieval-db-password[[:space:]]*=' \
   || log "aviso: falta retrieval-db-password en $(basename "$FILE") (la de RETRIEVAL_DB_PASSWORD): retrieval-service no podrá conectar"
+printf '%s\n' "${lines[@]}" | grep -Eq '^[[:space:]]*chat-db-password[[:space:]]*=' \
+  || log "aviso: falta chat-db-password en $(basename "$FILE") (la de CHAT_DB_PASSWORD): chat-service no podrá conectar"
 
 ADDED=()
 NEW_LINE=""

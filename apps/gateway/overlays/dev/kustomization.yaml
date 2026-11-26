@@ -16,6 +16,9 @@ configMapGenerator:
   # LAB-129: documents and knowledge are served by retrieval-service.
   - SHOPLAB_GATEWAY_ROUTES_DOCUMENTS_URI=http://retrieval-service:8080
   - SHOPLAB_GATEWAY_ROUTES_KNOWLEDGE_URI=http://retrieval-service:8080
+  # LAB-59: chat, feedback and assistant settings are served by chat-service.
+  - SHOPLAB_GATEWAY_ROUTES_CHAT_URI=http://chat-service:8080
+  - SHOPLAB_GATEWAY_ROUTES_ASSISTANT_URI=http://chat-service:8080
   name: gateway-config
 
 images:
