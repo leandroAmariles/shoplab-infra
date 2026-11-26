@@ -21,6 +21,24 @@ configMapGenerator:
   - SHOPLAB_GATEWAY_ROUTES_ASSISTANT_URI=http://chat-service:8080
   name: gateway-config
 
+# LAB-130: el nodo de dev no tiene CPU libre (1930m asignables). Con 100m de petición ClickHouse no cabía y un rollout
+# quedaba Pending. El pod viejo sale primero: con una réplica, el gateway se corta unos segundos en cada rollout.
+patches:
+- target:
+    kind: Deployment
+    name: gateway
+  patch: |-
+    - op: add
+      path: /spec/strategy
+      value:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 0
+          maxUnavailable: 1
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/requests/cpu
+      value: 50m
+
 images:
 - name: ghcr.io/leandroamariles/gateway
   newName: ghcr.io/leandroamariles/gateway
