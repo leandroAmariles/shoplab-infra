@@ -1,5 +1,5 @@
 # El k3s de Floci no trae StorageClass: sin una por defecto, los PVC de Postgres y Ollama quedan en Pending y
-# `shoplab-dev` no llega a Healthy. Chart local con local-path-provisioner (volúmenes hostPath en el nodo desechable).
+# `shoplab-dev` no llega a Healthy. Chart local con local-path-provisioner (volúmenes hostPath en el volumen de Docker del nodo).
 resource "helm_release" "local_path_storage" {
   name             = "local-path-storage"
   namespace        = "local-path-storage"

@@ -142,6 +142,7 @@ En este modo no se crea ningún clúster EKS emulado. En modo por defecto (`floc
 | `Floci no responde en http://localhost:4566` | El contenedor no arrancó o el puerto 4566 está ocupado por otro emulador. Revisa `docker ps` y detén el otro proceso. |
 | `Error acquiring the state lock` | Hay otra operación sobre el mismo estado. Espera a que termine. Si quedó huérfano tras un fallo: `terraform -chdir=terraform/envs/dev force-unlock <ID>` con el ID que muestra el error. |
 | Floci se reinició y perdió su contenido | El estado remoto referencia recursos que ya no existen. Ejecuta `make down` (limpia contenedores aunque Floci no responda) y vuelve a `make up`. |
+| Pods con `Permission denied` en su volumen y PV bajo `/opt/local-path-provisioner` | El PV es anterior al cambio de ruta y su contenido se perdió al recrearse el nodo; la ruta de un PV no se puede editar. Ver «Mover PVC antiguos al volumen del nodo». |
 | `make down` falla a medias | Es reintentable: vuelve a ejecutarlo; el error indica el recurso que falló. |
 | Pods de External Secrets no llegan a Floci | Los pods de k3s no resuelven nombres de contenedor ni `host.docker.internal`; el entorno usa la IP de Floci en la red de compose (`scripts/floci-ip.sh`). |
 | `node-exporter` ausente | Se desactiva a propósito: falla con `CreateContainerError` en k3s dentro de Docker. |
@@ -154,3 +155,17 @@ Floci valida los tokens de `aws eks get-token` con un webhook, pero el token que
 (`aws_eks_cluster_auth`) sale con `X-Amz-Expires=0` y la API de k3s responde `401`. Por eso el módulo `eks` lee el
 certificado de cliente de `/etc/rancher/k3s/k3s.yaml` del contenedor `floci-aws-eks-<cluster>`
 (`terraform/modules/eks/scripts/k3s-kubeconfig.sh`). Requiere la CLI de Docker en la misma máquina.
+
+## Mover PVC antiguos al volumen del nodo
+
+Los PV creados antes de usar `/var/lib/rancher/k3s/storage` siguen en la capa del contenedor de k3s y se pierden si se
+recrea. Para moverlos hay que recrearlos, lo que **borra sus datos** (Langfuse y las claves y el gasto de LiteLLM): copia
+antes lo que quieras conservar. Con el cambio ya aplicado (`make up`):
+
+1. Pausa la sincronización automática de `shoplab-root` y de `shoplab-dev` en Argo CD (si solo pausas la segunda, la
+   raíz la restaura).
+2. Escala a 0 los StatefulSet `langfuse-clickhouse`, `langfuse-minio`, `langfuse-postgres`, `langfuse-redis` y
+   `litellm-postgres`.
+3. Borra sus PVC (`data-<statefulset>-0`). Si algún PV queda en `Released`, bórralo con `kubectl delete pv`.
+4. Reactiva la sincronización de ambas y sincroniza `shoplab-dev`: recrea los PVC en la ruta nueva y el job
+   `litellm-bootstrap-keys` vuelve a crear las claves.

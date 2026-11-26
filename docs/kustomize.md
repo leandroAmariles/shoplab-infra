@@ -64,8 +64,9 @@ flujo completo y cómo entrar a la interfaz están en [`gitops.md`](gitops.md).
 
 El k3s de Floci no trae `StorageClass`, así que `make up` instala `local-path-provisioner` (chart local
 `terraform/modules/platform/charts/local-path-storage`) y deja `local-path` como clase por defecto: los PVC del clúster
-se provisionan solos con volúmenes `hostPath` en el nodo desechable, con permisos 0777 (en `dev` ya no quedan PVC:
-Postgres y Ollama corren en Docker). En un EKS real se usa la clase del clúster. Si cambias ese chart, sube su `version` en `Chart.yaml`: el provider de Helm no
+se provisionan solos con volúmenes `hostPath` en `/var/lib/rancher/k3s/storage`, con permisos 0777 (en `dev` los usan
+Langfuse y el PostgreSQL de LiteLLM). Esa ruta está en el volumen de Docker del nodo, así que los datos sobreviven a la
+recreación del contenedor de k3s; `make down` sigue destruyendo el entorno. En un EKS real se usa la clase del clúster. Si cambias ese chart, sube su `version` en `Chart.yaml`: el provider de Helm no
 detecta cambios en un chart local con la misma versión.
 
 ## Ollama en dev
