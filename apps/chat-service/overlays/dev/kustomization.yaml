@@ -1,16 +1,15 @@
+# Dev of chat-service (LAB-59). `images:` is updated by the deploy job of shoplab-chat-service on every release;
+# the name must be the full image name or that job refuses to update it.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-resources:
-  - ../../base
-
 namespace: shoplab-dev
 
-replicas:
-  - name: chat-service
-    count: 1
+resources:
+- ../../base
+- networkpolicy.yaml
 
 images:
-  - name: chat-service
-    newName: ghcr.io/leandroamariles/chat-service
-    newTag: v1.0.0
+- name: ghcr.io/leandroamariles/chat-service
+  newName: ghcr.io/leandroamariles/chat-service
+  newTag: v0.1.0

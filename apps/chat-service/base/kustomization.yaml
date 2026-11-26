@@ -4,8 +4,22 @@ kind: Kustomization
 resources:
   - deployment.yaml
   - service.yaml
+  - servicemonitor.yaml
   - externalsecret.yaml
 
 commonLabels:
   app.kubernetes.io/name: chat-service
   app.kubernetes.io/part-of: shoplab
+
+configMapGenerator:
+  - name: chat-service-config
+    literals:
+      - MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED=true
+      - POSTGRES_URL=jdbc:postgresql://postgres:5432/chat
+      - POSTGRES_USER=chat
+      - SPRING_AI_OPENAI_BASE_URL=http://litellm:4000/v1
+      - SHOPLAB_RETRIEVAL_CLIENT_BASE_URL=http://retrieval-service:8080
+      - SHOPLAB_CHAT_TRACING_ENVIRONMENT=dev
+      - SHOPLAB_CHAT_TRACING_ENDPOINT=http://langfuse-web:3000/api/public/otel
+      - SHOPLAB_CHAT_PROMPTS_BASE_URL=http://langfuse-web:3000
+      - LOGGING_LEVEL_ROOT=INFO

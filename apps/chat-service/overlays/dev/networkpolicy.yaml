@@ -1,0 +1,22 @@
+# As for backend and retrieval-service (LAB-84): from the Docker host it only reaches PostgreSQL, never Ollama,
+# so the model gateway is the only way to a model.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: chat-service-no-direct-ollama
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: chat-service
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [172.17.0.1/32]
+    - to:
+        - ipBlock:
+            cidr: 172.17.0.1/32
+      ports:
+        - port: 5432
+          protocol: TCP
