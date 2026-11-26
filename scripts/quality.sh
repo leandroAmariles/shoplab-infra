@@ -4,7 +4,7 @@
 # Las claves salen de los Secrets del clúster y viajan por variables de entorno del proceso: no se imprimen ni van en argumentos.
 # Requiere `make up` + `make seed` + `make forward` (los túneles de LiteLLM 4000 y Langfuse 3001) y el juez en Ollama.
 # Los argumentos se pasan tal cual al comando (p. ej. `make quality ARGS="--run-id demo-1 --no-langfuse"`).
-# Con el Secret backend-eval (LAB-31) la ejecución también se guarda en el historial del backend; `ARGS="--no-save"` lo evita.
+# Con el Secret eval-service-eval (LAB-31, LAB-130) la ejecución también se guarda en el historial de eval-service; `ARGS="--no-save"` lo evita.
 #   HELPDESK_DIR   shoplab-helpdesk (por defecto ../shoplab-helpdesk)
 #   INGRESS_PORT   puerto del ingress en el host (por defecto 8080)
 #   NAMESPACE      namespace de la app (por defecto shoplab-dev)
@@ -23,7 +23,7 @@ command -v kubectl >/dev/null || die "kubectl no está instalado"
 # Se comprueba antes de leer secretos o de gastar tiempo: los túneles los deja make forward (y make up).
 http_code() { curl -s -m 5 -o /dev/null -w '%{http_code}' "$@" 2>/dev/null || true; }
 [ "$(http_code -H 'Host: shoplab.localtest.me' "http://127.0.0.1:$INGRESS_PORT/api/documents")" = 200 ] \
-  || die "el backend no responde en el ingress (127.0.0.1:$INGRESS_PORT): ¿make up, make forward y make seed?"
+  || die "la API no responde en el ingress (127.0.0.1:$INGRESS_PORT): ¿make up, make forward y make seed?"
 code="$(http_code http://127.0.0.1:4000/health/liveliness)"
 { [ -n "$code" ] && [ "$code" != 000 ]; } || die "LiteLLM no responde en localhost:4000: ejecuta make forward"
 code="$(http_code http://127.0.0.1:3001/api/public/health)"
@@ -39,10 +39,10 @@ lf_public="$(secret_value langfuse-credentials LANGFUSE_INIT_PROJECT_PUBLIC_KEY)
 lf_secret="$(secret_value langfuse-credentials LANGFUSE_INIT_PROJECT_SECRET_KEY)"
 [ -n "$lf_public" ] && [ -n "$lf_secret" ] || die "el Secret langfuse-credentials no tiene las claves del proyecto de Langfuse"
 
-# Historial de evaluación (LAB-31): el token con el que `eval/` guarda la ejecución en el backend. Es opcional.
-eval_token="$(secret_value backend-eval SHOPLAB_EVAL_PERSISTENCE_TOKEN || true)"
+# Historial de evaluación (LAB-31): el token con el que `eval/` guarda la ejecución en eval-service. Es opcional.
+eval_token="$(secret_value eval-service-eval SHOPLAB_EVAL_PERSISTENCE_TOKEN || true)"
 
-# El backend no expone qué modelo corre: se registra el que fijó el despliegue (parámetro llm-model del tfvars).
+# Ningún servicio expone qué modelo corre: se registra el que fijó el despliegue (parámetro llm-model del tfvars).
 assistant_model="${SHOPLAB_EVAL_ASSISTANT_MODEL:-}"
 if [ -z "$assistant_model" ] && [ -f "$ENV_DIR/secrets.auto.tfvars" ]; then
   assistant_model="$(sed -n 's/^[[:space:]]*llm-model[[:space:]]*=[[:space:]]*"\(.*\)".*/\1/p' "$ENV_DIR/secrets.auto.tfvars" | tr -d '\r' | head -1)"
@@ -59,9 +59,9 @@ export SHOPLAB_EVAL_LANGFUSE_SECRET_KEY="$lf_secret"
 if [ -n "$eval_token" ]; then
   export SHOPLAB_EVAL_TOKEN="$eval_token"
   export SHOPLAB_EVAL_ORIGIN="${SHOPLAB_EVAL_ORIGIN:-dev}"
-  log "la ejecución se guardará en el historial de evaluación del backend (ARGS=\"--no-save\" lo evita)"
+  log "la ejecución se guardará en el historial de evaluación de eval-service (ARGS=\"--no-save\" lo evita)"
 else
-  log "aviso: el Secret backend-eval no existe o está vacío (¿make secrets y make up?): se mide sin guardar la ejecución en el historial"
+  log "aviso: el Secret eval-service-eval no existe o está vacío (¿make secrets y make up?): se mide sin guardar la ejecución en el historial"
 fi
 
 log "midiendo la calidad de las respuestas contra $SHOPLAB_EVAL_BASE_URL (Host shoplab.localtest.me)"

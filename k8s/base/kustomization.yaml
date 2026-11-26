@@ -5,7 +5,7 @@ kind: Kustomization
 resources:
   - postgres
   - ollama
-  - backend
+  - alerts
   - frontend
   - ingest
   - ingress

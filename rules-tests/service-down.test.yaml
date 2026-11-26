@@ -1,0 +1,119 @@
+# Pruebas de la alerta ServiceDown (LAB-102, LAB-130). scripts/prom-rules.sh extrae la regla renderizada a rules.yaml y
+# ejecuta `promtool test rules`.
+rule_files:
+  - rules.yaml
+
+evaluation_interval: 30s
+
+tests:
+  - name: un servicio con up == 0 sostenido dispara la alerta
+    interval: 30s
+    input_series:
+      - series: 'up{job="gateway",namespace="shoplab-dev",instance="gateway:8080"}'
+        values: '1x12'
+      - series: 'up{job="retrieval-service",namespace="shoplab-dev",instance="retrieval-service:8080"}'
+        values: '1x12'
+      - series: 'up{job="chat-service",namespace="shoplab-dev",instance="chat-service:8080"}'
+        values: '1x12'
+      - series: 'up{job="eval-service",namespace="shoplab-dev",instance="eval-service:8080"}'
+        values: '0x12'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: ServiceDown
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: ServiceDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: eval-service
+              namespace: shoplab-dev
+              instance: eval-service:8080
+            exp_annotations:
+              summary: Un servicio de ShopLab no responde
+              description: >-
+                Prometheus no recoge métricas de eval-service en shoplab-dev desde hace más de 2 minutos. Revisa sus pods y el dashboard «ShopLab · Pods».
+
+  - name: un servicio sin serie up (0 réplicas) dispara la alerta
+    interval: 30s
+    input_series:
+      - series: 'up{job="gateway",namespace="shoplab-dev",instance="gateway:8080"}'
+        values: '1x12'
+      - series: 'up{job="retrieval-service",namespace="shoplab-dev",instance="retrieval-service:8080"}'
+        values: '1x12'
+      - series: 'up{job="eval-service",namespace="shoplab-dev",instance="eval-service:8080"}'
+        values: '1x12'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: ServiceDown
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: ServiceDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: chat-service
+              namespace: shoplab-dev
+            exp_annotations:
+              summary: Un servicio de ShopLab no responde
+              description: >-
+                Prometheus no recoge métricas de chat-service en shoplab-dev desde hace más de 2 minutos. Revisa sus pods y el dashboard «ShopLab · Pods».
+
+  - name: un corte breve (menos de 2 minutos) no dispara la alerta
+    interval: 30s
+    input_series:
+      - series: 'up{job="gateway",namespace="shoplab-dev",instance="gateway:8080"}'
+        values: '0 0 1 1 1 1 1 1 1 1 1 1'
+      - series: 'up{job="retrieval-service",namespace="shoplab-dev",instance="retrieval-service:8080"}'
+        values: '1x12'
+      - series: 'up{job="chat-service",namespace="shoplab-dev",instance="chat-service:8080"}'
+        values: '1x12'
+      - series: 'up{job="eval-service",namespace="shoplab-dev",instance="eval-service:8080"}'
+        values: '1x12'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: ServiceDown
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: ServiceDown
+        exp_alerts: []
+
+  - name: todos sanos no disparan la alerta
+    interval: 30s
+    input_series:
+      - series: 'up{job="gateway",namespace="shoplab-dev",instance="gateway:8080"}'
+        values: '1x12'
+      - series: 'up{job="retrieval-service",namespace="shoplab-dev",instance="retrieval-service:8080"}'
+        values: '1x12'
+      - series: 'up{job="chat-service",namespace="shoplab-dev",instance="chat-service:8080"}'
+        values: '1x12'
+      - series: 'up{job="eval-service",namespace="shoplab-dev",instance="eval-service:8080"}'
+        values: '1x12'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: ServiceDown
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: ServiceDown
+        exp_alerts: []
+
+  - name: un servicio caído en otro namespace no dispara la alerta de shoplab-dev
+    interval: 30s
+    input_series:
+      - series: 'up{job="gateway",namespace="shoplab-dev",instance="gateway:8080"}'
+        values: '1x12'
+      - series: 'up{job="retrieval-service",namespace="shoplab-dev",instance="retrieval-service:8080"}'
+        values: '1x12'
+      - series: 'up{job="chat-service",namespace="shoplab-dev",instance="chat-service:8080"}'
+        values: '1x12'
+      - series: 'up{job="eval-service",namespace="shoplab-dev",instance="eval-service:8080"}'
+        values: '1x12'
+      - series: 'up{job="eval-service",namespace="otro",instance="eval-service:8080"}'
+        values: '0x12'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: ServiceDown
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: ServiceDown
+        exp_alerts: []

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Carga el corpus de la base de conocimiento (data/kb/*.md de shoplab-helpdesk) en el entorno levantado, subiendo cada
-# documento a POST /api/documents del backend (que lo trocea, calcula los embeddings y lo guarda). Es idempotente:
+# documento a POST /api/documents (que lo trocea, calcula los embeddings y lo guarda). Es idempotente:
 # volver a subir un documento lo reemplaza. Hay que repetirlo tras cada make up, porque make down borra la base.
 #   KB_DIR        carpeta con los .md (por defecto ../shoplab-helpdesk/data/kb)
 #   INGRESS_PORT  puerto del ingress en el host (por defecto 8080; el mismo que usa forward.sh)
@@ -25,11 +25,11 @@ for f in "$KB_DIR"/*.md; do
 done
 [ "${#files[@]}" -gt 0 ] || die "no hay documentos .md en $KB_DIR"
 
-log "esperando al backend en $BASE_URL"
+log "esperando a la API en $BASE_URL"
 tries=30
 until [ "$(curl -s -m 5 -o /dev/null -w '%{http_code}' -H "$HOST_HEADER" "$BASE_URL/api/documents" 2>/dev/null || true)" = 200 ]; do
   tries=$((tries - 1))
-  [ "$tries" -gt 0 ] || die "el backend no responde en $BASE_URL/api/documents (¿make up y make forward ya corrieron?)"
+  [ "$tries" -gt 0 ] || die "la API no responde en $BASE_URL/api/documents (¿make up y make forward ya corrieron?)"
   sleep 4
 done
 
